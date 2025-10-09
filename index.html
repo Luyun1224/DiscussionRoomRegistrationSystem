@@ -360,24 +360,17 @@
         // --- Data Logic (Apps Script API) ---
         
         /**
-         * FIX: 修正時區偏移問題的日期解析器。
+         * 修正時區偏移問題的日期解析器。
+         * Apps Script 傳來的日期格式為 "yyyy/MM/dd HH:mm"，我們需要依此格式建構本地 Date 物件
          */
-        const parseBookingDate = (isoString) => {
-             if (!isoString) return null;
-            // 匹配 YYYY-MM-DD 和 HH:MM
-            const match = isoString.match(/(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}):\d{2}/);
-            if (!match) return new Date(isoString); // 無法解析則返回標準解析 (可能會偏移)
+        const parseBookingDate = (dateString) => {
+            if (!dateString) return null;
+            // 格式: "2024/05/21 09:00"
+            const parts = dateString.split(/[\s/:]/);
+            if (parts.length < 5) return new Date(dateString); // 如果格式不符，使用原生解析
             
-            const datePart = match[1]; // YYYY-MM-DD
-            const timePart = match[2]; // HH:MM
-            
-            // 構造一個 Date 物件，使用本地時區的年、月、日、時、分
-            const [year, month, day] = datePart.split('-').map(Number);
-            const [hour, minute] = timePart.split(':').map(Number);
-            
-            // 月份在 JS 中是 0-indexed
-            const date = new Date(year, month - 1, day, hour, minute, 0, 0); 
-            return date;
+            // year, month-1, day, hour, minute
+            return new Date(parts[0], parts[1] - 1, parts[2], parts[3], parts[4]);
         };
 
 
@@ -386,19 +379,17 @@
          */
         const fetchBookings = async (dateString) => {
             document.getElementById('loadingIndicator').classList.remove('hidden');
+            document.getElementById('dashboardContainer').innerHTML = ''; // Clear previous table
             
             try {
                 // Apps Script URL + GET parameter for action
-                // 讀取資料
                 const response = await withRetry(() => fetch(`${API_URL}?action=get`));
-
                 let allBookings = response.data || [];
 
                 // Filter data received from Apps Script based on selected date
                 const newBookings = allBookings
                     .map(booking => ({
                         ...booking,
-                        // 使用 parseBookingDate 修正時區偏移
                         startTime: parseBookingDate(booking.開始時間), 
                         endTime: parseBookingDate(booking.結束時間),   
                         id: booking.ID,                       
@@ -408,7 +399,6 @@
                         purpose: booking.預訂用途
                     }))
                     .filter(booking => {
-                        // 檢查日期是否匹配，同時確保 startTime 不是 null
                         return booking.startTime && formatDate(booking.startTime) === dateString;
                     });
 
@@ -417,7 +407,7 @@
 
             } catch (error) {
                 console.error("Error fetching bookings:", error);
-                document.getElementById('loadingIndicator').innerHTML = `<p class="text-red-600">載入資料失敗: ${error.message} (請檢查 Apps Script 是否已部署，或 Google Sheet 名稱是否正確)</p>`;
+                document.getElementById('dashboardContainer').innerHTML = `<p class="text-red-600 p-4 text-center">載入資料失敗: ${error.message}</p>`;
             } finally {
                 document.getElementById('loadingIndicator').classList.add('hidden');
             }
@@ -437,7 +427,6 @@
                 const existingStartMs = booking.startTime.getTime();
                 const existingEndMs = booking.endTime.getTime();
 
-                // Conflict if: New booking overlaps with an existing one. [start, end)
                 return newStartMs < existingEndMs && newEndMs > newStartMs;
             });
         };
@@ -446,80 +435,71 @@
          * Saves a new booking to Google Sheet via Apps Script.
          */
         const submitBooking = async (roomName, startTimeStr, endTimeStr, personName, contactInfo, purpose) => {
-            // 1. 在操作開始時顯示等待遮罩
             showProcessingOverlay(true); 
 
             const dateString = document.getElementById('datePicker').value;
             const [startHour, startMinute] = startTimeStr.split(':').map(Number);
             const [endHour, endMinute] = endTimeStr.split(':').map(Number);
             
-            // Create Date objects
             const startDateTime = getStartOfToday(dateString);
             startDateTime.setHours(startHour, startMinute);
             
             const endDateTime = getStartOfToday(dateString);
             endDateTime.setHours(endHour, endMinute);
 
-
             if (!personName.trim() || !contactInfo.trim() || !purpose.trim()) {
                 showCustomMessage('預訂失敗', '預定人、聯絡方式和用途皆為必填欄位。', 'error');
-                showProcessingOverlay(false); // 隱藏遮罩
+                showProcessingOverlay(false);
                 return;
             }
 
             if (endDateTime.getTime() <= startDateTime.getTime()) {
                 showCustomMessage('預訂失敗', '結束時間必須晚於開始時間。', 'error');
-                showProcessingOverlay(false); // 隱藏遮罩
+                showProcessingOverlay(false);
                 return;
             }
             
             if (endDateTime.getTime() - startDateTime.getTime() < TIME_INTERVAL_MINUTES * 60 * 1000) {
                  showCustomMessage('預訂失敗', `預訂時長至少需要 ${TIME_INTERVAL_MINUTES} 分鐘。`, 'error');
-                 showProcessingOverlay(false); // 隱藏遮罩
+                 showProcessingOverlay(false);
                  return;
             }
 
             if (checkConflict(roomName, startDateTime, endDateTime)) {
                 showCustomMessage('預訂衝突', '此時段已被預訂或與其他預訂有時間重疊，請重新選擇。', 'warning');
-                showProcessingOverlay(false); // 隱藏遮罩
+                showProcessingOverlay(false);
                 return;
             }
 
             try {
-                // Prepare new booking object using ISO strings for Apps Script
                 const newBooking = {
                     action: 'add',
-                    id: generateUUID(), // Client-generated unique ID
+                    id: generateUUID(),
                     roomName,
-                    startTime: startDateTime.toISOString(), // Send as ISO String
-                    endTime: endDateTime.toISOString(),     // Send as ISO String
+                    startTime: startDateTime.toISOString(),
+                    endTime: endDateTime.toISOString(),
                     personName: personName.trim(), 
                     contactInfo: contactInfo.trim(),
                     purpose: purpose.trim(),
                 };
                 
-                // 傳送 POST 請求給 Apps Script
                 await withRetry(() => fetch(API_URL, {
                     method: 'POST',
-                    // 確保 Content-Type 為 text/plain
                     headers: { 'Content-Type': 'text/plain' }, 
                     body: JSON.stringify(newBooking)
                 }));
-
-
-                showCustomMessage('預訂成功', `您已成功預訂 ${roomName}，時段：${startTimeStr}-${endTimeStr}。`, 'success');
                 
-                // 2. 確保 Google Sheet 有時間完成寫入操作
-                await new Promise(resolve => setTimeout(resolve, 750));
-
-                // 3. Refresh data after successful POST, this will re-render the dashboard
+                await new Promise(resolve => setTimeout(resolve, 1000)); 
                 await fetchBookings(dateString); 
+                closeModal();
+                showCustomMessage('預訂成功', `您已成功預訂 ${roomName}，時段：${startTimeStr}-${endTimeStr}。`, 'success');
+
             } catch (error) {
                 console.error("Error submitting booking: ", error);
                 showCustomMessage('預訂失敗', `無法完成預訂：${error.message}`, 'error');
             } finally {
-                closeModal(); // 4. 在資料更新並顯示成功訊息後，才關閉模態框
-                showProcessingOverlay(false); // 5. 隱藏等待遮罩
+                // *** 錯誤修正：簡化 finally 區塊，只負責隱藏 overlay ***
+                showProcessingOverlay(false);
             }
         };
 
@@ -527,7 +507,7 @@
          * Deletes a booking from Google Sheet via Apps Script, requires verification.
          */
         const deleteBooking = async (docId, requiredPersonName, requiredContactInfo) => {
-            showProcessingOverlay(true); // 顯示等待遮罩
+            showProcessingOverlay(true);
             const dateString = document.getElementById('datePicker').value;
 
             const inputPersonName = document.getElementById('deletePersonName').value.trim();
@@ -535,7 +515,7 @@
 
             if (!inputPersonName || !inputContactInfo) {
                 showCustomMessage('驗證失敗', '請填寫所有驗證資訊。', 'error');
-                showProcessingOverlay(false); // 隱藏遮罩
+                showProcessingOverlay(false);
                 return;
             }
 
@@ -543,33 +523,27 @@
                 const deletionData = {
                     action: 'delete',
                     id: docId,
-                    // Send verification data to Apps Script for server-side check
                     personName: inputPersonName, 
                     contactInfo: inputContactInfo
                 };
 
-                // 傳送 POST 請求給 Apps Script
                 await withRetry(() => fetch(API_URL, {
                     method: 'POST',
-                    // 確保 Content-Type 為 text/plain
                     headers: { 'Content-Type': 'text/plain' }, 
                     body: JSON.stringify(deletionData)
                 }));
                 
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                await fetchBookings(dateString);
+                closeModal();
                 showCustomMessage('取消成功', '預訂已成功取消。', 'success');
-                
-                // 確保 Google Sheet 有時間完成寫入操作
-                await new Promise(resolve => setTimeout(resolve, 750));
 
-                // Refresh data after successful DELETE
-                await fetchBookings(dateString); 
             } catch (error) {
                 console.error("Error deleting booking: ", error);
-                // 顯示從 Apps Script 傳回的錯誤訊息 (例如驗證失敗)
                 showCustomMessage('取消失敗', `無法取消預訂：${error.message}`, 'error');
             } finally {
-                closeModal();
-                showProcessingOverlay(false); // 隱藏等待遮罩
+                // *** 錯誤修正：簡化 finally 區塊，只負責隱藏 overlay ***
+                showProcessingOverlay(false);
             }
         };
 
@@ -580,24 +554,21 @@
             const container = document.getElementById('dashboardContainer');
             let tableHTML = '<table class="schedule-table">';
 
-            // --- 1. Render Table Header (Time Headers) ---
             tableHTML += '<thead><tr>';
-            tableHTML += '<th>場地名稱</th>'; // Fixed room name column
+            tableHTML += '<th>場地名稱</th>';
             TIME_HEADERS.forEach(time => {
                 tableHTML += `<th>${time}</th>`;
             });
             tableHTML += '</tr></thead>';
 
-            // --- 2. Render Table Body (Room Schedules) ---
             tableHTML += '<tbody>';
             
             ROOM_KEYS.forEach(roomKey => {
                 const roomName = ROOM_NAMES[roomKey];
-                // window.BOOKINGS already contains Date objects for the selected day
                 const roomBookings = window.BOOKINGS.filter(b => b.roomName === roomName);
                 
                 tableHTML += '<tr>';
-                tableHTML += `<td class="text-left">${roomName}</td>`; // Room Name Cell
+                tableHTML += `<td class="text-left">${roomName}</td>`;
 
                 let columnIndex = 0;
                 while (columnIndex < TIME_HEADERS.length) {
@@ -608,9 +579,7 @@
                     blockStart.setHours(startHour, startMinute, 0, 0);
                     const blockStartMs = blockStart.getTime();
 
-                    // Find a booking that overlaps with this 30-min block
                     let booking = roomBookings.find(b => {
-                        // b.startTime/endTime are Date objects (now safely parsed)
                         if (!b.startTime || !b.endTime) return false;
                         const bStartMs = b.startTime.getTime(); 
                         const bEndMs = b.endTime.getTime();
@@ -618,48 +587,38 @@
                         return bStartMs < blockEndMs && bEndMs > blockStartMs;
                     });
 
-
                     if (booking) {
                         const bStart = booking.startTime;
                         const bEnd = booking.endTime;
                         
-                        // 確保時間字串使用本地時間
                         const bStartStr = String(bStart.getHours()).padStart(2, '0') + ':' + String(bStart.getMinutes()).padStart(2, '0');
                         const bEndStr = String(bEnd.getHours()).padStart(2, '0') + ':' + String(bEnd.getMinutes()).padStart(2, '0');
                         
                         const isStartBlock = bStartStr === timeHeader;
 
                         if (isStartBlock) {
-                            // Calculate colspan (duration in 30-minute intervals)
                             const durationMs = bEnd.getTime() - bStart.getTime();
                             const colspan = Math.round(durationMs / (TIME_INTERVAL_MINUTES * 60 * 1000));
                             
                             const purpose = booking.purpose || '無用途';
                             const personName = booking.personName || '未知';
                             
-                            // 根據房間名稱選擇不同的顏色類別
                             const stateClass = (roomName === '討論室') ? 'slot-booked-room1' : 'slot-booked-room2'; 
-                            
                             const timeRange = `${bStartStr}-${bEndStr}`;
                             
-                            // *** FIX: 對傳入 openModal 的字串參數進行轉義，以避免引號中斷 JS 呼叫 ***
-                            const clickAction = `openModal('view', '${roomName}', '${timeRange}', '${booking.id}', '${personName.replace(/'/g, "\\'")}', '${booking.contactInfo.replace(/'/g, "\\'")}', '${purpose.replace(/'/g, "\\'")}')`;
+                            const clickAction = `openModal('view', '${roomName}', '${timeRange}', '${booking.id}', '${String(personName || '').replace(/'/g, "\\'")}', '${String(booking.contactInfo || '').replace(/'/g, "\\'")}', '${String(purpose || '').replace(/'/g, "\\'")}')`;
 
-                            // Render the merged cell with Purpose and Person Name
                             tableHTML += `
                                 <td colspan="${colspan}" class="${stateClass} time-slot" onclick="${clickAction}" title="${roomName}: ${timeRange} - ${purpose} - ${personName}">
                                     ${purpose}
                                     <span class="slot-details">預定人: ${personName}</span>
                                 </td>
                             `;
-                            columnIndex += colspan; // Skip columns covered by this booking
-
+                            columnIndex += colspan;
                         } else {
-                            // This block is covered by an ongoing booking, so we skip the cell (it was merged)
                             columnIndex++;
                         }
                     } else {
-                        // Slot is available
                         const clickAction = `openModal('book', '${roomName}', '${timeHeader}')`;
                         tableHTML += `
                             <td class="slot-available time-slot" onclick="${clickAction}">
@@ -669,7 +628,6 @@
                         columnIndex++;
                     }
                 }
-
                 tableHTML += '</tr>';
             });
             
@@ -677,10 +635,6 @@
             container.innerHTML = tableHTML;
         };
         
-        /**
-         * 控制全螢幕等待遮罩的顯示與隱藏
-         * @param {boolean} show - true 為顯示, false 為隱藏
-         */
         const showProcessingOverlay = (show) => {
             const overlay = document.getElementById('processingOverlay');
             if (show) {
@@ -688,7 +642,6 @@
                 overlay.style.opacity = 1;
             } else {
                 overlay.style.opacity = 0;
-                // 使用 setTimeout 確保動畫完成後再隱藏
                 setTimeout(() => {
                     overlay.classList.add('hidden');
                 }, 300); 
@@ -696,7 +649,6 @@
         };
 
         // --- Modal Control and Custom Message ---
-
         const showCustomMessage = (title, message, type) => {
             const modal = document.getElementById('bookingModal');
             document.getElementById('modalTitle').textContent = title;
@@ -710,29 +662,26 @@
             modal.classList.remove('hidden', 'opacity-0');
             modal.classList.add('flex', 'opacity-100');
 
-            // Close after 3 seconds for notification messages
-            if (type !== 'book' && type !== 'view') {
+            if (type === 'book' || type === 'view') {
+                 // No auto close for booking or viewing
+            } else {
                 setTimeout(() => {
-                    closeModal();
+                    if (document.getElementById('bookingFormContent').classList.contains('hidden') && document.getElementById('deletionConfirmationContent').classList.contains('hidden')) {
+                         closeModal();
+                    }
                 }, 3000);
             }
         }
 
-        /**
-         * Dynamically generates end time options (30-minute increments) based on start time
-         */
         const generateEndTimeOptions = (startTimeStr) => {
             const [startHour, startMinute] = startTimeStr.split(':').map(Number);
             const select = document.getElementById('endTimeSelect');
             select.innerHTML = ''; 
-
             const startMinutes = startHour * 60 + startMinute;
-            const maxEndMinutes = END_HOUR * 60; // 18:00
+            const maxEndMinutes = END_HOUR * 60;
 
-            // Generate options every TIME_INTERVAL_MINUTES (30 min), starting from 1 interval after start time
             for (let m = startMinutes + TIME_INTERVAL_MINUTES; m <= maxEndMinutes; m += TIME_INTERVAL_MINUTES) {
                 const endTimeStr = minutesToTimeString(m);
-                
                 const option = document.createElement('option');
                 option.value = endTimeStr;
                 option.textContent = endTimeStr; 
@@ -740,9 +689,7 @@
             }
         }
 
-
         window.openModal = (type, roomName, timeSlot, docId = null, personName = null, contactInfo = null, purpose = null) => {
-            // timeSlot is either the 30-min start time (e.g., '09:30') or the full booking time (e.g., '09:00-11:00')
             let startTime = timeSlot;
             let endTime = '';
 
@@ -750,17 +697,15 @@
                 [startTime, endTime] = timeSlot.split('-'); 
             }
             
-            // Reset modal state
             document.getElementById('bookingModal').classList.remove('hidden', 'opacity-0');
             document.getElementById('bookingModal').classList.add('flex', 'opacity-100');
             document.getElementById('bookingFormContent').classList.add('hidden');
             document.getElementById('deletionConfirmationContent').classList.add('hidden');
-            document.getElementById('personName').value = ''; // Clear fields for booking
+            document.getElementById('personName').value = '';
             document.getElementById('contactInfo').value = '';
             document.getElementById('purpose').value = '';
-            document.getElementById('deletePersonName').value = ''; // Clear fields for deletion
+            document.getElementById('deletePersonName').value = '';
             document.getElementById('deleteContactInfo').value = '';
-
 
             const modalTitle = document.getElementById('modalTitle');
             const modalMessage = document.getElementById('modalMessage');
@@ -768,7 +713,6 @@
             primaryBtn.classList.remove('hidden', 'bg-red-600', 'hover:bg-red-700');
             primaryBtn.classList.add('bg-sky-600', 'hover:bg-sky-700');
 
-            // Store verification details for deletion
             window.currentAction = { type, roomName, startTime, endTime, docId, personName, contactInfo, purpose };
 
             if (type === 'book') {
@@ -780,24 +724,22 @@
                 document.getElementById('startTimeDisplay').value = startTime;
                 generateEndTimeOptions(startTime); 
                 document.getElementById('endTimeSelect').selectedIndex = 0; 
-
             } else if (type === 'view') {
                 modalTitle.textContent = `查看與取消預訂 ${roomName}`;
                 modalMessage.innerHTML = `
                     <div class="text-left space-y-2 p-3 bg-blue-50 rounded-lg">
                         <p><strong>時段：</strong> <span class="text-sky-700">${startTime}-${endTime}</span></p>
-                        <p><strong>用途：：</strong> ${purpose}</p>
-                        <p><strong>預定人：：</strong> ${personName}</p>
+                        <p><strong>用途：</strong> ${purpose}</p>
+                        <p><strong>預定人：</strong> ${personName}</p>
                         <p><strong>聯絡方式：</strong> ${contactInfo}</p>
                     </div>
                 `;
                 
-                // Set the modal state to 'delete' and show the verification form
                 document.getElementById('deletionConfirmationContent').classList.remove('hidden');
                 primaryBtn.textContent = '確認資訊並取消預訂';
                 primaryBtn.classList.remove('bg-sky-600', 'hover:bg-sky-700');
                 primaryBtn.classList.add('bg-red-600', 'hover:bg-red-700');
-                window.currentAction.type = 'delete_verify'; // Change action type for submission
+                window.currentAction.type = 'delete_verify';
             } 
         };
 
@@ -816,25 +758,21 @@
                 const selectedEndTimeStr = document.getElementById('endTimeSelect').value; 
                 submitBooking(action.roomName, action.startTime, selectedEndTimeStr, personName, contactInfo, purpose);
             } else if (action.type === 'delete_verify') {
-                // Perform deletion verification
                 deleteBooking(action.docId, action.personName, action.contactInfo);
             }
         };
 
-        // --- Event Listeners and Initial Setup ---
-
         const setupDateListener = () => {
             const datePicker = document.getElementById('datePicker');
             const today = new Date();
-            datePicker.value = formatDate(today); // Set default to today
+            datePicker.value = formatDate(today);
             datePicker.addEventListener('change', (e) => {
                 fetchBookings(e.target.value);
             });
         };
 
-        // Initialize on window load
         window.onload = initializeApp;
-
     </script>
 </body>
 </html>
+

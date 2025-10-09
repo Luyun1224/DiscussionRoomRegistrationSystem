@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>教學部會議室登記</title>
-    <!-- 載入 Tailwind CSS CDN for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -150,7 +149,6 @@
 </head>
 <body class="min-h-screen">
 
-    <!-- Full-screen Processing Overlay -->
     <div id="processingOverlay" class="hidden">
         <svg class="animate-spin h-10 w-10 text-white mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -160,13 +158,11 @@
         <p class="mt-2 text-sm text-gray-300">Google Sheet 資料連動中，可能需要幾秒鐘。</p>
     </div>
 
-    <!-- Header -->
     <header class="bg-white shadow-xl p-4 sticky top-0 z-10">
         <div class="container mx-auto flex flex-col sm:flex-row justify-between items-center">
             <h1 class="text-3xl font-extrabold text-sky-600 mb-2 sm:mb-0">✨ 教學部會議室登記 ✨</h1>
             <div class="flex items-center space-x-4">
                 <input type="date" id="datePicker" class="text-lg font-medium shadow-md" />
-                <!-- 移除狀態提示文字，但保留 ID 以便未來彈性擴充 -->
                 <span id="authStatus" class="text-sm font-medium text-red-500 font-bold hidden"></span>
             </div>
         </div>
@@ -174,14 +170,11 @@
 
     <main class="container mx-auto p-4 pt-6">
 
-        <!-- Room Dashboard Container -->
         <div class="overflow-x-auto bg-white rounded-2xl shadow-2xl">
             <div id="dashboardContainer">
-                <!-- Schedule table will be rendered here -->
-            </div>
+                </div>
         </div>
         
-        <!-- Loading Indicator -->
         <div id="loadingIndicator" class="text-center p-8 hidden">
             <svg class="animate-spin h-8 w-8 text-sky-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -191,7 +184,6 @@
         </div>
     </main>
 
-    <!-- Modal for Booking/Deletion/Viewing -->
     <div id="bookingModal" class="fixed inset-0 bg-gray-900 bg-opacity-60 hidden items-center justify-center z-50 p-4 backdrop-blur-sm">
         <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md transform transition-all border-t-4 border-sky-500">
             <h3 id="modalTitle" class="text-2xl font-bold mb-4 border-b pb-2 text-gray-800">預訂會議室</h3>
@@ -199,7 +191,6 @@
             <p id="modalMessage" class="mb-4 text-sm text-gray-600"></p>
             
             <div id="bookingFormContent" class="space-y-4 hidden">
-                <!-- New Fields -->
                 <div>
                     <label for="personName" class="block text-sm font-medium text-gray-700 mb-1">預定人 (必填)</label>
                     <input type="text" id="personName" class="w-full p-3 border border-gray-300 rounded-xl focus:ring-sky-500 focus:border-sky-500 shadow-sm" placeholder="請輸入您的姓名或單位" required>
@@ -208,7 +199,6 @@
                     <label for="contactInfo" class="block text-sm font-medium text-gray-700 mb-1">聯絡方式 (必填)</label>
                     <input type="text" id="contactInfo" class="w-full p-3 border border-gray-300 rounded-xl focus:ring-sky-500 focus:border-sky-500 shadow-sm" placeholder="電話/分機/Email" required>
                 </div>
-                <!-- Purpose Field -->
                 <div>
                     <label for="purpose" class="block text-sm font-medium text-gray-700 mb-1">預訂用途 (必填)</label>
                     <input type="text" id="purpose" class="w-full p-3 border border-gray-300 rounded-xl focus:ring-sky-500 focus:border-sky-500 shadow-sm" placeholder="請輸入預訂用途" required>
@@ -226,7 +216,6 @@
                 </div>
             </div>
 
-            <!-- Deletion Verification Content -->
             <div id="deletionConfirmationContent" class="hidden space-y-4">
                 <p class="text-base text-red-600 font-medium">請輸入預訂時填寫的資訊以進行驗證：</p>
                 <div>
@@ -237,6 +226,7 @@
                     <label for="deleteContactInfo" class="block text-sm font-medium text-gray-700 mb-1">聯絡方式</label>
                     <input type="text" id="deleteContactInfo" class="w-full p-3 border border-gray-300 rounded-xl focus:ring-red-500 focus:border-red-500 shadow-sm" placeholder="預訂時填寫的聯絡方式" required>
                 </div>
+                <p id="deleteError" class="text-red-500 text-sm font-bold hidden"></p>
             </div>
 
 
@@ -251,7 +241,6 @@
         </div>
     </div>
 
-    <!-- Client-side Logic: Connects to Google Apps Script -->
     <script type="module">
         // IMPORTANT: Apps Script 部署後的網址
         const API_URL = 'https://script.google.com/macros/s/AKfycbx19UdR3V26vH3kSp7OUPaTnWmEw0bRA2jhzXZ7bY-Fi5khPakQqN8qncOIpGeDry2tBA/exec';
@@ -274,7 +263,7 @@
 
         // --- Utility Functions ---
 
-        /** Generates a simple UUID (since crypto.randomUUID is not universally available/needed) */
+        /** Generates a simple UUID */
         const generateUUID = () => {
              return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
                 const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
@@ -319,35 +308,49 @@
         const TIME_HEADERS = generateTimeHeaders(); // Memoized headers
 
         /**
-         * 處理 Apps Script API 呼叫的重試機制
+         * *** 核心修正 ***
+         * 處理 Apps Script API 呼叫的重試機制，現在可以識別業務邏輯錯誤（例如驗證失敗）
          */
-        const withRetry = async (fn, maxRetries = 3, delay = 1000) => {
+        const withRetry = async (fn, maxRetries = 2, delay = 1000) => {
             for (let i = 0; i < maxRetries; i++) {
                 try {
                     const response = await fn();
-                    if (response.ok) {
-                        const jsonResponse = await response.json();
-                        // 檢查 Apps Script 回傳的狀態
-                        if (jsonResponse.status === 'error') {
-                            // Apps Script 傳回錯誤訊息，拋出錯誤讓外層處理
-                            throw new Error(`伺服器錯誤: ${jsonResponse.message}`); 
-                        }
-                        return jsonResponse;
-                    } else {
-                        throw new Error(`HTTP 錯誤: ${response.status} ${response.statusText}`);
+                    if (!response.ok) {
+                        // 處理 HTTP 錯誤 (e.g., 500, 404)
+                        throw new Error(`伺服器連線錯誤: ${response.status} ${response.statusText}`);
                     }
+                    
+                    const jsonResponse = await response.json();
+
+                    // 檢查 Apps Script 回傳的自定義狀態
+                    // 如果是 'success' 或 'verification_failed'，都算是成功呼叫，不再重試
+                    if (jsonResponse.status === 'success' || jsonResponse.status === 'verification_failed') {
+                        return jsonResponse; 
+                    }
+                    
+                    // 如果是 'error'，則拋出由 Apps Script 提供的錯誤訊息
+                    if (jsonResponse.status === 'error') {
+                        throw new Error(`伺服器處理錯誤: ${jsonResponse.message}`); 
+                    }
+
+                    // 對於其他未知的狀態，當作通用錯誤
+                    throw new Error('收到未知的伺服器回應');
+
                 } catch (error) {
-                    if (i === maxRetries - 1) {
+                    if (i === maxRetries - 1) { // 如果是最後一次重試，則拋出最終錯誤
                         throw error;
                     }
+                    // 等待一段時間後重試
                     await new Promise(resolve => setTimeout(resolve, delay * (2 ** i)));
                 }
             }
         };
 
+
         // --- App Initialization ---
 
         const initializeApp = () => {
+            // 資安註解：前端不應包含任何敏感金鑰。API_URL 是公開的，但後端 GAS 會驗證所有寫入操作。
             if (API_URL === 'YOUR_DEPLOYED_WEB_APP_URL') {
                  console.error("錯誤：請先將程式碼中的 API_URL 替換為您部署 Apps Script 後獲得的網址。");
                  document.getElementById('loadingIndicator').innerHTML = `<p class="text-red-600 font-bold">錯誤：請將程式碼中的 API_URL 替換為您部署 Apps Script 後獲得的網址。</p>`;
@@ -361,7 +364,6 @@
         
         /**
          * 修正時區偏移問題的日期解析器。
-         * Apps Script 傳來的日期格式為 "yyyy/MM/dd HH:mm"，我們需要依此格式建構本地 Date 物件
          */
         const parseBookingDate = (dateString) => {
             if (!dateString) return null;
@@ -382,11 +384,13 @@
             document.getElementById('dashboardContainer').innerHTML = ''; // Clear previous table
             
             try {
-                // Apps Script URL + GET parameter for action
                 const response = await withRetry(() => fetch(`${API_URL}?action=get`));
+                if (response.status !== 'success') {
+                    throw new Error(response.message || '無法獲取預訂資料');
+                }
+
                 let allBookings = response.data || [];
 
-                // Filter data received from Apps Script based on selected date
                 const newBookings = allBookings
                     .map(booking => ({
                         ...booking,
@@ -415,7 +419,6 @@
         
         /**
          * Checks if the new booking time conflicts with any existing booking for the room.
-         * Expects startTime and endTime to be JS Date objects.
          */
         const checkConflict = (roomName, startTime, endTime) => {
             const newStartMs = startTime.getTime();
@@ -427,7 +430,7 @@
                 const existingStartMs = booking.startTime.getTime();
                 const existingEndMs = booking.endTime.getTime();
 
-                return newStartMs < existingEndMs && newEndMs > newStartMs;
+                return newStartMs < existingEndMs && newEndMs > existingStartMs;
             });
         };
         
@@ -448,25 +451,13 @@
             endDateTime.setHours(endHour, endMinute);
 
             if (!personName.trim() || !contactInfo.trim() || !purpose.trim()) {
-                showCustomMessage('預訂失敗', '預定人、聯絡方式和用途皆為必填欄位。', 'error');
+                alert('預定人、聯絡方式和用途皆為必填欄位。');
                 showProcessingOverlay(false);
                 return;
-            }
-
-            if (endDateTime.getTime() <= startDateTime.getTime()) {
-                showCustomMessage('預訂失敗', '結束時間必須晚於開始時間。', 'error');
-                showProcessingOverlay(false);
-                return;
-            }
-            
-            if (endDateTime.getTime() - startDateTime.getTime() < TIME_INTERVAL_MINUTES * 60 * 1000) {
-                 showCustomMessage('預訂失敗', `預訂時長至少需要 ${TIME_INTERVAL_MINUTES} 分鐘。`, 'error');
-                 showProcessingOverlay(false);
-                 return;
             }
 
             if (checkConflict(roomName, startDateTime, endDateTime)) {
-                showCustomMessage('預訂衝突', '此時段已被預訂或與其他預訂有時間重疊，請重新選擇。', 'warning');
+                alert('此時段已被預訂或與其他預訂有時間重疊，請重新選擇。');
                 showProcessingOverlay(false);
                 return;
             }
@@ -483,38 +474,47 @@
                     purpose: purpose.trim(),
                 };
                 
-                await withRetry(() => fetch(API_URL, {
+                const response = await withRetry(() => fetch(API_URL, {
                     method: 'POST',
+                    // 資安註解：雖然 body 是 JSON，但 GAS Web App 的標準接收方式是 text/plain，然後在後端解析。
                     headers: { 'Content-Type': 'text/plain' }, 
                     body: JSON.stringify(newBooking)
                 }));
                 
+                if (response.status !== 'success') {
+                    throw new Error(response.message || '預訂請求失敗');
+                }
+
                 await new Promise(resolve => setTimeout(resolve, 1000)); 
                 await fetchBookings(dateString); 
                 closeModal();
-                showCustomMessage('預訂成功', `您已成功預訂 ${roomName}，時段：${startTimeStr}-${endTimeStr}。`, 'success');
+                alert('預訂成功！');
 
             } catch (error) {
                 console.error("Error submitting booking: ", error);
-                showCustomMessage('預訂失敗', `無法完成預訂：${error.message}`, 'error');
+                alert(`預訂失敗：${error.message}`);
             } finally {
-                // *** 錯誤修正：簡化 finally 區塊，只負責隱藏 overlay ***
                 showProcessingOverlay(false);
             }
         };
 
         /**
-         * Deletes a booking from Google Sheet via Apps Script, requires verification.
+         * *** 核心修正 ***
+         * Deletes a booking, now properly handles verification failures from the backend.
          */
-        const deleteBooking = async (docId, requiredPersonName, requiredContactInfo) => {
+        const deleteBooking = async (docId) => {
             showProcessingOverlay(true);
             const dateString = document.getElementById('datePicker').value;
 
             const inputPersonName = document.getElementById('deletePersonName').value.trim();
             const inputContactInfo = document.getElementById('deleteContactInfo').value.trim();
+            const errorP = document.getElementById('deleteError');
+
+            errorP.classList.add('hidden'); // Reset error message
 
             if (!inputPersonName || !inputContactInfo) {
-                showCustomMessage('驗證失敗', '請填寫所有驗證資訊。', 'error');
+                errorP.textContent = '請填寫所有驗證資訊。';
+                errorP.classList.remove('hidden');
                 showProcessingOverlay(false);
                 return;
             }
@@ -527,22 +527,34 @@
                     contactInfo: inputContactInfo
                 };
 
-                await withRetry(() => fetch(API_URL, {
+                const response = await withRetry(() => fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'text/plain' }, 
                     body: JSON.stringify(deletionData)
                 }));
                 
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                await fetchBookings(dateString);
-                closeModal();
-                showCustomMessage('取消成功', '預訂已成功取消。', 'success');
+                // *** 核心修正 ***
+                // 檢查後端回傳的特定狀態
+                if (response.status === 'verification_failed') {
+                    // 驗證失敗，在畫面上顯示後端傳來的錯誤訊息
+                    errorP.textContent = response.message;
+                    errorP.classList.remove('hidden');
+                } else if (response.status === 'success') {
+                    // 成功刪除
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    await fetchBookings(dateString);
+                    closeModal();
+                    alert('預訂已成功取消。');
+                } else {
+                    // 其他來自後端的錯誤
+                    throw new Error(response.message || '取消預訂時發生未知錯誤');
+                }
 
             } catch (error) {
                 console.error("Error deleting booking: ", error);
-                showCustomMessage('取消失敗', `無法取消預訂：${error.message}`, 'error');
+                errorP.textContent = `取消失敗：${error.message}`;
+                errorP.classList.remove('hidden');
             } finally {
-                // *** 錯誤修正：簡化 finally 區塊，只負責隱藏 overlay ***
                 showProcessingOverlay(false);
             }
         };
@@ -622,7 +634,6 @@
                         const clickAction = `openModal('book', '${roomName}', '${timeHeader}')`;
                         tableHTML += `
                             <td class="slot-available time-slot" onclick="${clickAction}">
-                                預訂
                             </td>
                         `;
                         columnIndex++;
@@ -639,39 +650,12 @@
             const overlay = document.getElementById('processingOverlay');
             if (show) {
                 overlay.classList.remove('hidden');
-                overlay.style.opacity = 1;
             } else {
-                overlay.style.opacity = 0;
-                setTimeout(() => {
-                    overlay.classList.add('hidden');
-                }, 300); 
+                overlay.classList.add('hidden');
             }
         };
 
-        // --- Modal Control and Custom Message ---
-        const showCustomMessage = (title, message, type) => {
-            const modal = document.getElementById('bookingModal');
-            document.getElementById('modalTitle').textContent = title;
-            document.getElementById('modalMessage').textContent = message;
-            document.getElementById('bookingFormContent').classList.add('hidden');
-            document.getElementById('deletionConfirmationContent').classList.add('hidden');
-            
-            const primaryBtn = document.getElementById('modalPrimaryButton');
-            primaryBtn.classList.add('hidden');
-            
-            modal.classList.remove('hidden', 'opacity-0');
-            modal.classList.add('flex', 'opacity-100');
-
-            if (type === 'book' || type === 'view') {
-                 // No auto close for booking or viewing
-            } else {
-                setTimeout(() => {
-                    if (document.getElementById('bookingFormContent').classList.contains('hidden') && document.getElementById('deletionConfirmationContent').classList.contains('hidden')) {
-                         closeModal();
-                    }
-                }, 3000);
-            }
-        }
+        // --- Modal Control ---
 
         const generateEndTimeOptions = (startTimeStr) => {
             const [startHour, startMinute] = startTimeStr.split(':').map(Number);
@@ -697,8 +681,7 @@
                 [startTime, endTime] = timeSlot.split('-'); 
             }
             
-            document.getElementById('bookingModal').classList.remove('hidden', 'opacity-0');
-            document.getElementById('bookingModal').classList.add('flex', 'opacity-100');
+            document.getElementById('bookingModal').classList.remove('hidden');
             document.getElementById('bookingFormContent').classList.add('hidden');
             document.getElementById('deletionConfirmationContent').classList.add('hidden');
             document.getElementById('personName').value = '';
@@ -706,6 +689,7 @@
             document.getElementById('purpose').value = '';
             document.getElementById('deletePersonName').value = '';
             document.getElementById('deleteContactInfo').value = '';
+            document.getElementById('deleteError').classList.add('hidden'); // Hide error message on open
 
             const modalTitle = document.getElementById('modalTitle');
             const modalMessage = document.getElementById('modalMessage');
@@ -725,9 +709,10 @@
                 generateEndTimeOptions(startTime); 
                 document.getElementById('endTimeSelect').selectedIndex = 0; 
             } else if (type === 'view') {
-                modalTitle.textContent = `查看與取消預訂 ${roomName}`;
+                modalTitle.textContent = `查看與取消預訂`;
                 modalMessage.innerHTML = `
                     <div class="text-left space-y-2 p-3 bg-blue-50 rounded-lg">
+                        <p><strong>場地：</strong> ${roomName}</p>
                         <p><strong>時段：</strong> <span class="text-sky-700">${startTime}-${endTime}</span></p>
                         <p><strong>用途：</strong> ${purpose}</p>
                         <p><strong>預定人：</strong> ${personName}</p>
@@ -736,7 +721,7 @@
                 `;
                 
                 document.getElementById('deletionConfirmationContent').classList.remove('hidden');
-                primaryBtn.textContent = '確認資訊並取消預訂';
+                primaryBtn.textContent = '確認取消此預訂';
                 primaryBtn.classList.remove('bg-sky-600', 'hover:bg-sky-700');
                 primaryBtn.classList.add('bg-red-600', 'hover:bg-red-700');
                 window.currentAction.type = 'delete_verify';
@@ -744,8 +729,7 @@
         };
 
         window.closeModal = () => {
-            document.getElementById('bookingModal').classList.add('hidden', 'opacity-0');
-            document.getElementById('bookingModal').classList.remove('flex', 'opacity-100');
+            document.getElementById('bookingModal').classList.add('hidden');
             window.currentAction = { type: 'none', roomName: null, startTime: null, endTime: null, docId: null };
         };
 
@@ -758,7 +742,7 @@
                 const selectedEndTimeStr = document.getElementById('endTimeSelect').value; 
                 submitBooking(action.roomName, action.startTime, selectedEndTimeStr, personName, contactInfo, purpose);
             } else if (action.type === 'delete_verify') {
-                deleteBooking(action.docId, action.personName, action.contactInfo);
+                deleteBooking(action.docId);
             }
         };
 
@@ -775,4 +759,3 @@
     </script>
 </body>
 </html>
-

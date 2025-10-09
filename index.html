@@ -46,7 +46,7 @@
         </div>
     </div>
 
-    <!-- Modals -->
+    <!-- New Booking Modal -->
     <div id="booking-modal" class="fixed inset-0 z-50 bg-black bg-opacity-50 flex justify-center items-center p-4 modal-backdrop opacity-0 pointer-events-none">
         <div class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-lg transform scale-95 transition-transform duration-300">
             <h3 class="text-2xl font-bold mb-4 text-gray-800">預約時段</h3>
@@ -64,8 +64,35 @@
                 <div><label for="booking-purpose" class="block text-sm font-medium text-gray-700 mb-1">預定用途:</label><textarea id="booking-purpose" rows="3" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 input-field" placeholder="例如：專案會議、部門訓練"></textarea></div>
             </div>
             <div class="mt-8 flex justify-end space-x-4">
-                <button id="cancel-booking-btn" class="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors">取消</button>
+                <button class="close-modal-btn px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors">關閉</button>
                 <button id="confirm-booking-btn" class="px-6 py-2 btn-primary rounded-lg font-semibold">確認預約</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Booking Modal -->
+    <div id="edit-modal" class="fixed inset-0 z-50 bg-black bg-opacity-50 flex justify-center items-center p-4 modal-backdrop opacity-0 pointer-events-none">
+        <div class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-lg transform scale-95 transition-transform duration-300">
+            <h3 class="text-2xl font-bold mb-4 text-gray-800">編輯預約</h3>
+            <div class="bg-yellow-50 p-4 rounded-lg mb-6">
+                <div class="flex justify-between items-center text-center">
+                    <div><p class="text-sm text-gray-500">房間</p><p id="edit-modal-room-name" class="font-bold text-lg text-yellow-600"></p></div>
+                    <div><p class="text-sm text-gray-500">日期</p><p id="edit-modal-date" class="font-semibold text-lg"></p></div>
+                    <div><p class="text-sm text-gray-500">從</p><p id="edit-modal-start-time" class="font-semibold text-lg"></p></div>
+                    <div><p class="text-sm text-gray-500">到</p><select id="edit-end-time-select" class="font-semibold text-lg bg-transparent border-none focus:ring-0 p-0 pr-7"></select></div>
+                </div>
+            </div>
+            <div class="space-y-4">
+                <div><label for="edit-booker-name" class="block text-sm font-medium text-gray-700 mb-1">借用者姓名:</label><input type="text" id="edit-booker-name" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-yellow-500 focus:border-yellow-500 input-field"></div>
+                <div><label for="edit-booker-contact" class="block text-sm font-medium text-gray-700 mb-1">聯絡方式:</label><input type="text" id="edit-booker-contact" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-yellow-500 focus:border-yellow-500 input-field"></div>
+                <div><label for="edit-booking-purpose" class="block text-sm font-medium text-gray-700 mb-1">預定用途:</label><textarea id="edit-booking-purpose" rows="3" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-yellow-500 focus:border-yellow-500 input-field"></textarea></div>
+            </div>
+            <div class="mt-8 flex justify-between items-center">
+                 <button id="trigger-cancel-btn" class="px-6 py-2 btn-danger rounded-lg font-semibold">取消此預約</button>
+                 <div class="space-x-4">
+                    <button class="close-modal-btn px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors">關閉</button>
+                    <button id="confirm-edit-btn" class="px-6 py-2 btn-primary rounded-lg font-semibold">儲存變更</button>
+                 </div>
             </div>
         </div>
     </div>
@@ -92,6 +119,7 @@
         const scheduleContainer = document.getElementById('schedule-container');
         const loader = document.getElementById('loader');
         const bookingModal = document.getElementById('booking-modal');
+        const editModal = document.getElementById('edit-modal');
         const alertModal = document.getElementById('alert-modal');
 
         const showLoader = () => { loader.classList.remove('opacity-0', 'pointer-events-none'); };
@@ -206,8 +234,6 @@
             }
 
             bookings.forEach(booking => {
-                console.log("正在處理預約資料:", booking);
-
                 const roomName = booking['場地名稱'];
                 const startTime = booking['開始時間'];
                 const endTime = booking['結束時間'];
@@ -271,8 +297,6 @@
                 if (!response.ok) throw new Error(`無法從 Google Sheet 讀取資料 (HTTP ${response.status})`);
                 const result = await response.json();
                 
-                console.log("從後端收到的原始資料:", JSON.stringify(result, null, 2));
-
                 if(result.status === 'error') throw new Error(result.message);
                 
                 renderSchedule(result.data || []);
@@ -285,108 +309,136 @@
             }
         }
 
-        const showModal = (roomName, startTime) => {
+        function showBookingModal(roomName, startTime) {
+            bookingModal.classList.remove('opacity-0', 'pointer-events-none');
+            bookingModal.querySelector('div').classList.remove('scale-95');
+
             document.getElementById('modal-room-name').textContent = roomName;
             document.getElementById('modal-date').textContent = datePicker.value;
             document.getElementById('modal-start-time').textContent = startTime;
             
             const endTimeSelect = document.getElementById('end-time-select');
-            endTimeSelect.innerHTML = '';
-            
             const roomBookingsToday = currentBookings.filter(b => b['場地名稱'] === roomName);
             const startIndex = timeSlots.indexOf(startTime);
             
+            populateEndTimeSelect(endTimeSelect, startIndex, roomBookingsToday);
+
+            ['booker-name', 'booker-contact', 'booking-purpose'].forEach(id => document.getElementById(id).value = '');
+        };
+        
+        function showEditModal(booking) {
+            editModal.classList.remove('opacity-0', 'pointer-events-none');
+            editModal.querySelector('div').classList.remove('scale-95');
+            editModal.dataset.bookingId = booking['預約ID'];
+
+            document.getElementById('edit-modal-room-name').textContent = booking['場地名稱'];
+            document.getElementById('edit-modal-date').textContent = booking['預約日期'];
+            document.getElementById('edit-modal-start-time').textContent = booking['開始時間'];
+            
+            document.getElementById('edit-booker-name').value = booking['借用者'];
+            document.getElementById('edit-booker-contact').value = booking['聯絡方式'];
+            document.getElementById('edit-booking-purpose').value = booking['預訂用途'];
+
+            const endTimeSelect = document.getElementById('edit-end-time-select');
+            const roomBookingsToday = currentBookings.filter(b => b['場地名稱'] === booking['場地名稱'] && b['預約ID'] !== booking['預約ID']);
+            const startIndex = timeSlots.indexOf(booking['開始時間']);
+
+            populateEndTimeSelect(endTimeSelect, startIndex, roomBookingsToday, booking['結束時間']);
+        }
+        
+        function populateEndTimeSelect(selectElement, startIndex, bookings, currentEndTime = null) {
+            selectElement.innerHTML = '';
             for (let i = startIndex + 1; i < timeSlots.length; i++) {
                 const slotTime = timeSlots[i];
                 const option = document.createElement('option');
                 option.value = slotTime;
                 option.textContent = slotTime;
-                endTimeSelect.appendChild(option);
                 
-                const nextBookingTime = roomBookingsToday
-                    .filter(b => timeToMinutes(b['開始時間']) > timeToMinutes(startTime))
+                if (currentEndTime && slotTime === currentEndTime) {
+                    option.selected = true;
+                }
+
+                selectElement.appendChild(option);
+                
+                const nextBooking = bookings
+                    .filter(b => timeToMinutes(b['開始時間']) > timeToMinutes(timeSlots[startIndex]))
                     .sort((a,b) => timeToMinutes(a['開始時間']) - timeToMinutes(b['開始時間']))
                     [0];
-                
-                if (nextBookingTime && timeToMinutes(slotTime) > timeToMinutes(nextBookingTime['開始時間'])) {
-                    endTimeSelect.removeChild(option);
+
+                if (nextBooking && timeToMinutes(slotTime) > timeToMinutes(nextBooking['開始時間'])) {
+                    selectElement.removeChild(option);
                     break;
                 }
             }
-            if (endTimeSelect.options.length === 0 && startIndex < timeSlots.length - 1) {
+             if (selectElement.options.length === 0 && startIndex < timeSlots.length - 1) {
                  const option = document.createElement('option');
                  option.value = timeSlots[startIndex+1];
                  option.textContent = timeSlots[startIndex+1];
-                 endTimeSelect.appendChild(option);
+                 selectElement.appendChild(option);
             }
+        }
 
 
-            ['booker-name', 'booker-contact', 'booking-purpose'].forEach(id => document.getElementById(id).value = '');
-            bookingModal.querySelector('div').dataset.roomName = roomName;
-            bookingModal.querySelector('div').dataset.startTime = startTime;
-            bookingModal.classList.remove('opacity-0', 'pointer-events-none');
-            bookingModal.querySelector('div').classList.remove('scale-95');
-        };
-
-        const hideModal = () => {
+        function hideAllModals() {
              bookingModal.classList.add('opacity-0', 'pointer-events-none');
              bookingModal.querySelector('div').classList.add('scale-95');
+             editModal.classList.add('opacity-0', 'pointer-events-none');
+             editModal.querySelector('div').classList.add('scale-95');
         };
 
-        const handleConfirmBooking = async () => {
-            const name = document.getElementById('booker-name').value.trim();
-            const contact = document.getElementById('booker-contact').value.trim();
-            const purpose = document.getElementById('booking-purpose').value.trim();
-
-            if (!name || !contact || !purpose) {
-                await customAlert('所有欄位皆為必填！');
-                return;
-            }
-            
-            const { roomName, startTime } = bookingModal.querySelector('div').dataset;
-            const endTime = document.getElementById('end-time-select').value;
-            const date = datePicker.value;
-
-            const bookingData = {
-                action: 'book',
-                payload: { date, roomName, startTime, endTime, bookerName: name, contact: contact, purpose: purpose }
-            };
-            
+        async function handleApiCall(action, payload, successMessage) {
             showLoader();
             try {
                 const response = await fetch(WEB_APP_URL, { 
                     method: 'POST', 
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify(bookingData)
+                    body: JSON.stringify({ action, payload })
                 });
                 const result = await response.json();
-                if (result.status !== 'success') throw new Error(result.message || '預約失敗');
+                if (result.status !== 'success') throw new Error(result.message || '操作失敗');
                 
                 hideLoader(); 
-                hideModal();
+                hideAllModals();
                 renderSchedule(result.data);
-                await customAlert('預約成功！');
+                await customAlert(successMessage);
             } catch (error) {
                 hideLoader(); 
-                console.error("Booking error:", error);
-                await customAlert(`預約失敗：${error.message}`);
+                console.error(`${action} error:`, error);
+                await customAlert(`操作失敗：${error.message}`);
             }
+        }
+
+        const handleConfirmBooking = () => {
+            const name = document.getElementById('booker-name').value.trim();
+            const contact = document.getElementById('booker-contact').value.trim();
+            const purpose = document.getElementById('booking-purpose').value.trim();
+
+            if (!name || !contact || !purpose) {
+                customAlert('所有欄位皆為必填！');
+                return;
+            }
+            
+            const roomName = document.getElementById('modal-room-name').textContent;
+            const startTime = document.getElementById('modal-start-time').textContent;
+            const endTime = document.getElementById('end-time-select').value;
+            const date = datePicker.value;
+
+            handleApiCall('book', { date, roomName, startTime, endTime, bookerName: name, contact: contact, purpose: purpose }, '預約成功！');
         };
         
-        scheduleContainer.addEventListener('click', (e) => {
-            const availableCell = e.target.closest('.time-slot-cell.available');
-            const bookedSlot = e.target.closest('.booked-slot');
-
-            if (availableCell) {
-                const { roomName, timeSlot } = availableCell.dataset;
-                showModal(roomName, timeSlot);
+        const handleConfirmEdit = () => {
+            const bookingId = editModal.dataset.bookingId;
+            const name = document.getElementById('edit-booker-name').value.trim();
+            const contact = document.getElementById('edit-booker-contact').value.trim();
+            const purpose = document.getElementById('edit-booking-purpose').value.trim();
+            const endTime = document.getElementById('edit-end-time-select').value;
+             if (!name || !contact || !purpose) {
+                customAlert('所有欄位皆為必填！');
+                return;
             }
-            if (bookedSlot) {
-                const bookingId = bookedSlot.dataset.bookingId;
-                handleCancelBooking(bookingId);
-            }
-        });
-
+            handleApiCall('edit', { bookingId, endTime, bookerName: name, contact: contact, purpose: purpose }, '修改成功！');
+        };
+        
         async function handleCancelBooking(bookingId) {
             const booking = currentBookings.find(b => b['預約ID'] === bookingId);
             if(!booking) return;
@@ -394,28 +446,34 @@
             const confirmed = await customConfirm(`您確定要取消 ${booking['借用者']} 於 ${booking['開始時間']}-${booking['結束時間']} 的預約嗎？`);
             if (!confirmed) return;
 
-            showLoader();
-            try {
-                 const response = await fetch(WEB_APP_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({ action: 'cancel', payload: { bookingId: bookingId } })
-                });
-                const result = await response.json();
-                 if (result.status !== 'success') throw new Error(result.message || '取消失敗');
-
-                hideLoader();
-                renderSchedule(result.data);
-                await customAlert('取消成功！');
-            } catch (error) {
-                hideLoader(); 
-                console.error("Cancellation error:", error);
-                await customAlert(`取消預約失敗：${error.message}`);
-            }
+            handleApiCall('cancel', { bookingId: bookingId }, '取消成功！');
         };
 
+        scheduleContainer.addEventListener('click', (e) => {
+            const availableCell = e.target.closest('.time-slot-cell.available');
+            const bookedSlot = e.target.closest('.booked-slot');
+
+            if (availableCell) {
+                const { roomName, timeSlot } = availableCell.dataset;
+                showBookingModal(roomName, timeSlot);
+            }
+            if (bookedSlot) {
+                const bookingId = bookedSlot.dataset.bookingId;
+                const booking = currentBookings.find(b => b['預約ID'] === bookingId);
+                if (booking) showEditModal(booking);
+            }
+        });
+
         document.getElementById('confirm-booking-btn').addEventListener('click', handleConfirmBooking);
-        document.getElementById('cancel-booking-btn').addEventListener('click', hideModal);
+        document.getElementById('confirm-edit-btn').addEventListener('click', handleConfirmEdit);
+        document.getElementById('trigger-cancel-btn').addEventListener('click', () => {
+             const bookingId = editModal.dataset.bookingId;
+             handleCancelBooking(bookingId);
+        });
+        
+        document.querySelectorAll('.close-modal-btn').forEach(btn => {
+            btn.addEventListener('click', hideAllModals);
+        });
         
         window.addEventListener('load', () => {
             const today = new Date();

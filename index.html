@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教學部會議室登記</title>
+    <!-- 載入 Tailwind CSS CDN for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Lively and Vibrant Colors */
+            --primary: #0ea5e9; /* Sky Blue (討論室) */
+            --secondary-booked: #8b5cf6; /* Deep Purple (多功能室) */
+            --text-color: #1f2937;
+            --bg-light: #f0f9ff; /* Light Sky Background */
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-light);
+            color: var(--text-color);
+        }
+        
+        /* Table Styling for Calendar View */
+        .schedule-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed; 
+        }
+        .schedule-table th, .schedule-table td {
+            border: 1px solid #bae6fd; /* Lighter border for vibrant look */
+            padding: 0;
+            height: 48px; 
+            text-align: center;
+            font-size: 0.8rem;
+            line-height: 1.2;
+            overflow: hidden;
+            white-space: nowrap;
+            vertical-align: middle;
+            transition: all 0.2s;
+        }
+        .schedule-table th {
+            background-color: #e0f2fe; /* Very light blue header */
+            font-weight: 700;
+            color: #0369a1;
+            padding: 0.5rem 0.25rem;
+        }
+        
+        /* First Column (Room Name) */
+        .schedule-table td:first-child {
+            width: 150px; 
+            font-weight: 800;
+            background-color: #a5f3fc; /* Cyan background for room names */
+            color: #0e7490;
+            font-size: 0.9rem;
+            padding: 0 8px;
+            white-space: normal;
+            position: sticky; /* Keep room name visible on horizontal scroll */
+            left: 0;
+            z-index: 10;
+        }
+        /* Fix for sticky first column header */
+        .schedule-table th:first-child {
+            position: sticky;
+            left: 0;
+            z-index: 20;
+        }
+
+        /* Time Slot Cells */
+        .time-slot {
+            cursor: pointer;
+        }
+        .slot-available {
+            background-color: #f8fafc; /* Near white available slot */
+        }
+        .slot-available:hover {
+            background-color: #e5e7eb;
+        }
+        
+        /* --- 雙色預訂樣式 --- */
+        /* 討論室 (Sky Blue) */
+        .slot-booked-room1 {
+            background-color: var(--primary); 
+            color: white;
+            cursor: pointer; 
+            font-weight: 600;
+        }
+        .slot-booked-room1:hover {
+            filter: brightness(1.1);
+        }
+        
+        /* 多功能室 (Deep Purple) */
+        .slot-booked-room2 {
+            background-color: var(--secondary-booked); 
+            color: white;
+            cursor: pointer; 
+            font-weight: 600;
+        }
+        .slot-booked-room2:hover {
+            filter: brightness(1.1);
+        }
+        /* --- end 雙色預訂樣式 --- */
+
+        .slot-details {
+            display: block;
+            font-size: 0.65rem;
+            font-weight: 400;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            opacity: 0.9;
+            padding-top: 2px;
+        }
+        
+        /* Style for inputs in modal */
+        input[type="text"], select {
+            border-radius: 0.75rem;
+        }
+
+        /* Full-screen Processing Overlay */
+        #processingOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            color: white;
+            backdrop-filter: blur(4px);
+            transition: opacity 0.3s;
+        }
+
+
+        /* Mobile adjustment for time headers */
+        @media (max-width: 768px) {
+            .schedule-table th, .schedule-table td {
+                font-size: 0.65rem;
+            }
+            .schedule-table td:first-child {
+                width: 100px;
+                font-size: 0.7rem;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- Full-screen Processing Overlay -->
+    <div id="processingOverlay" class="hidden">
+        <svg class="animate-spin h-10 w-10 text-white mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p class="mt-4 text-xl font-semibold">正在處理您的請求，請稍候...</p>
+        <p class="mt-2 text-sm text-gray-300">Google Sheet 資料連動中，可能需要幾秒鐘。</p>
+    </div>
+
+    <!-- Header -->
+    <header class="bg-white shadow-xl p-4 sticky top-0 z-10">
+        <div class="container mx-auto flex flex-col sm:flex-row justify-between items-center">
+            <h1 class="text-3xl font-extrabold text-sky-600 mb-2 sm:mb-0">✨ 教學部會議室登記 ✨</h1>
+            <div class="flex items-center space-x-4">
+                <input type="date" id="datePicker" class="text-lg font-medium shadow-md" />
+                <!-- 移除狀態提示文字，但保留 ID 以便未來彈性擴充 -->
+                <span id="authStatus" class="text-sm font-medium text-red-500 font-bold hidden"></span>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto p-4 pt-6">
+
+        <!-- Room Dashboard Container -->
+        <div class="overflow-x-auto bg-white rounded-2xl shadow-2xl">
+            <div id="dashboardContainer">
+                <!-- Schedule table will be rendered here -->
+            </div>
+        </div>
+        
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator" class="text-center p-8 hidden">
+            <svg class="animate-spin h-8 w-8 text-sky-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="mt-2 text-gray-600">正在載入預訂資料...</p>
+        </div>
+    </main>
+
+    <!-- Modal for Booking/Deletion/Viewing -->
+    <div id="bookingModal" class="fixed inset-0 bg-gray-900 bg-opacity-60 hidden items-center justify-center z-50 p-4 backdrop-blur-sm">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md transform transition-all border-t-4 border-sky-500">
+            <h3 id="modalTitle" class="text-2xl font-bold mb-4 border-b pb-2 text-gray-800">預訂會議室</h3>
+            
+            <p id="modalMessage" class="mb-4 text-sm text-gray-600"></p>
+            
+            <div id="bookingFormContent" class="space-y-4 hidden">
+                <!-- New Fields -->
+                <div>
+                    <label for="personName" class="block text-sm font-medium text-gray-700 mb-1">預定人 (必填)</label>
+                    <input type="text" id="personName" class="w-full p-3 border border-gray-300 rounded-xl focus:ring-sky-500 focus:border-sky-500 shadow-sm" placeholder="請輸入您的姓名或單位" required>
+                </div>
+                <div>
+                    <label for="contactInfo" class="block text-sm font-medium text-gray-700 mb-1">聯絡方式 (必填)</label>
+                    <input type="text" id="contactInfo" class="w-full p-3 border border-gray-300 rounded-xl focus:ring-sky-500 focus:border-sky-500 shadow-sm" placeholder="電話/分機/Email" required>
+                </div>
+                <!-- Purpose Field -->
+                <div>
+                    <label for="purpose" class="block text-sm font-medium text-gray-700 mb-1">預訂用途 (必填)</label>
+                    <input type="text" id="purpose" class="w-full p-3 border border-gray-300 rounded-xl focus:ring-sky-500 focus:border-sky-500 shadow-sm" placeholder="請輸入預訂用途" required>
+                </div>
+                
+                <div class="flex space-x-4">
+                    <div class="w-1/2">
+                        <label for="startTimeDisplay" class="block text-sm font-medium text-gray-700 mb-1">開始時間</label>
+                        <input type="text" id="startTimeDisplay" class="w-full p-3 bg-gray-100 border border-gray-300 rounded-xl" readonly>
+                    </div>
+                    <div class="w-1/2">
+                        <label for="endTimeSelect" class="block text-sm font-medium text-gray-700 mb-1">結束時間</label>
+                        <select id="endTimeSelect" class="w-full p-3 border border-gray-300 rounded-xl focus:ring-sky-500 focus:border-sky-500"></select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Deletion Verification Content -->
+            <div id="deletionConfirmationContent" class="hidden space-y-4">
+                <p class="text-base text-red-600 font-medium">請輸入預訂時填寫的資訊以進行驗證：</p>
+                <div>
+                    <label for="deletePersonName" class="block text-sm font-medium text-gray-700 mb-1">預定人</label>
+                    <input type="text" id="deletePersonName" class="w-full p-3 border border-gray-300 rounded-xl focus:ring-red-500 focus:border-red-500 shadow-sm" placeholder="預訂時填寫的姓名/單位" required>
+                </div>
+                <div>
+                    <label for="deleteContactInfo" class="block text-sm font-medium text-gray-700 mb-1">聯絡方式</label>
+                    <input type="text" id="deleteContactInfo" class="w-full p-3 border border-gray-300 rounded-xl focus:ring-red-500 focus:border-red-500 shadow-sm" placeholder="預訂時填寫的聯絡方式" required>
+                </div>
+            </div>
+
+
+            <div class="mt-6 flex justify-end space-x-3">
+                <button onclick="closeModal()" class="px-5 py-2 bg-gray-200 text-gray-800 font-medium rounded-xl hover:bg-gray-300 transition duration-150 shadow-md">
+                    取消
+                </button>
+                <button id="modalPrimaryButton" onclick="submitModalAction()" class="px-5 py-2 bg-sky-600 text-white font-medium rounded-xl hover:bg-sky-700 transition duration-150 shadow-lg">
+                    確認預訂
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Client-side Logic: Connects to Google Apps Script -->
+    <script type="module">
+        // IMPORTANT: Apps Script 部署後的網址
+        const API_URL = 'https://script.google.com/macros/s/AKfycbx19UdR3V26vH3kSp7OUPaTnWmEw0bRA2jhzXZ7bY-Fi5khPakQqN8qncOIpGeDry2tBA/exec';
+        
+        // Global state for bookings and UI interaction
+        window.BOOKINGS = [];
+        window.currentAction = { type: 'none', roomName: null, startTime: null, endTime: null, docId: null };
+
+        // Configuration
+        const ROOM_NAMES = {
+            'room1': '討論室', 
+            'room2': '多功能室'  
+        };
+        const ROOM_KEYS = Object.keys(ROOM_NAMES); 
+        
+        // Time Configuration
+        const START_HOUR = 8;
+        const END_HOUR = 18; // Booking ends at 18:00
+        const TIME_INTERVAL_MINUTES = 30; // Granularity of the calendar view and booking increments
+
+        // --- Utility Functions ---
+
+        /** Generates a simple UUID (since crypto.randomUUID is not universally available/needed) */
+        const generateUUID = () => {
+             return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        };
+
+        // Helper to format Date to YYYY-MM-DD
+        const formatDate = (date) => {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        };
+
+        // Helper to get date object set to midnight
+        const getStartOfToday = (dateString) => {
+            const d = new Date(dateString);
+            d.setHours(0, 0, 0, 0);
+            return d;
+        };
+        
+        // Generates time string (e.g., "08:00", "08:30") from minutes from midnight
+        const minutesToTimeString = (totalMinutes) => {
+            const hour = String(Math.floor(totalMinutes / 60)).padStart(2, '0');
+            const minute = String(totalMinutes % 60).padStart(2, '0');
+            return `${hour}:${minute}`;
+        };
+
+        // Generate column headers (e.g., "08:00", "08:30", "09:00", ...)
+        const generateTimeHeaders = () => {
+            const headers = [];
+            let currentTime = START_HOUR * 60; // Start time in minutes
+            const maxTime = END_HOUR * 60; // Max end time 
+            
+            while (currentTime < maxTime) {
+                headers.push(minutesToTimeString(currentTime));
+                currentTime += TIME_INTERVAL_MINUTES;
+            }
+            return headers;
+        };
+        const TIME_HEADERS = generateTimeHeaders(); // Memoized headers
+
+        /**
+         * 處理 Apps Script API 呼叫的重試機制
+         */
+        const withRetry = async (fn, maxRetries = 3, delay = 1000) => {
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fn();
+                    if (response.ok) {
+                        const jsonResponse = await response.json();
+                        // 檢查 Apps Script 回傳的狀態
+                        if (jsonResponse.status === 'error') {
+                            // Apps Script 傳回錯誤訊息，拋出錯誤讓外層處理
+                            throw new Error(`伺服器錯誤: ${jsonResponse.message}`); 
+                        }
+                        return jsonResponse;
+                    } else {
+                        throw new Error(`HTTP 錯誤: ${response.status} ${response.statusText}`);
+                    }
+                } catch (error) {
+                    if (i === maxRetries - 1) {
+                        throw error;
+                    }
+                    await new Promise(resolve => setTimeout(resolve, delay * (2 ** i)));
+                }
+            }
+        };
+
+        // --- App Initialization ---
+
+        const initializeApp = () => {
+            if (API_URL === 'YOUR_DEPLOYED_WEB_APP_URL') {
+                 console.error("錯誤：請先將程式碼中的 API_URL 替換為您部署 Apps Script 後獲得的網址。");
+                 document.getElementById('loadingIndicator').innerHTML = `<p class="text-red-600 font-bold">錯誤：請將程式碼中的 API_URL 替換為您部署 Apps Script 後獲得的網址。</p>`;
+                 return;
+            }
+            setupDateListener();
+            fetchBookings(document.getElementById('datePicker').value);
+        };
+
+        // --- Data Logic (Apps Script API) ---
+        
+        /**
+         * FIX: 修正時區偏移問題的日期解析器。
+         */
+        const parseBookingDate = (isoString) => {
+             if (!isoString) return null;
+            // 匹配 YYYY-MM-DD 和 HH:MM
+            const match = isoString.match(/(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}):\d{2}/);
+            if (!match) return new Date(isoString); // 無法解析則返回標準解析 (可能會偏移)
+            
+            const datePart = match[1]; // YYYY-MM-DD
+            const timePart = match[2]; // HH:MM
+            
+            // 構造一個 Date 物件，使用本地時區的年、月、日、時、分
+            const [year, month, day] = datePart.split('-').map(Number);
+            const [hour, minute] = timePart.split(':').map(Number);
+            
+            // 月份在 JS 中是 0-indexed
+            const date = new Date(year, month - 1, day, hour, minute, 0, 0); 
+            return date;
+        };
+
+
+        /**
+         * Loads bookings from Google Sheet via Apps Script.
+         */
+        const fetchBookings = async (dateString) => {
+            document.getElementById('loadingIndicator').classList.remove('hidden');
+            
+            try {
+                // Apps Script URL + GET parameter for action
+                // 讀取資料
+                const response = await withRetry(() => fetch(`${API_URL}?action=get`));
+
+                let allBookings = response.data || [];
+
+                // Filter data received from Apps Script based on selected date
+                const newBookings = allBookings
+                    .map(booking => ({
+                        ...booking,
+                        // 使用 parseBookingDate 修正時區偏移
+                        startTime: parseBookingDate(booking.開始時間), 
+                        endTime: parseBookingDate(booking.結束時間),   
+                        id: booking.ID,                       
+                        roomName: booking.場地名稱,
+                        personName: booking.預定人,
+                        contactInfo: booking.聯絡方式,
+                        purpose: booking.預訂用途
+                    }))
+                    .filter(booking => {
+                        // 檢查日期是否匹配，同時確保 startTime 不是 null
+                        return booking.startTime && formatDate(booking.startTime) === dateString;
+                    });
+
+                window.BOOKINGS = newBookings;
+                renderDashboard(dateString);
+
+            } catch (error) {
+                console.error("Error fetching bookings:", error);
+                document.getElementById('loadingIndicator').innerHTML = `<p class="text-red-600">載入資料失敗: ${error.message} (請檢查 Apps Script 是否已部署，或 Google Sheet 名稱是否正確)</p>`;
+            } finally {
+                document.getElementById('loadingIndicator').classList.add('hidden');
+            }
+        };
+        
+        /**
+         * Checks if the new booking time conflicts with any existing booking for the room.
+         * Expects startTime and endTime to be JS Date objects.
+         */
+        const checkConflict = (roomName, startTime, endTime) => {
+            const newStartMs = startTime.getTime();
+            const newEndMs = endTime.getTime();
+
+            return window.BOOKINGS.some(booking => {
+                if (booking.roomName !== roomName) return false;
+
+                const existingStartMs = booking.startTime.getTime();
+                const existingEndMs = booking.endTime.getTime();
+
+                // Conflict if: New booking overlaps with an existing one. [start, end)
+                return newStartMs < existingEndMs && newEndMs > newStartMs;
+            });
+        };
+        
+        /**
+         * Saves a new booking to Google Sheet via Apps Script.
+         */
+        const submitBooking = async (roomName, startTimeStr, endTimeStr, personName, contactInfo, purpose) => {
+            // 1. 在操作開始時顯示等待遮罩
+            showProcessingOverlay(true); 
+
+            const dateString = document.getElementById('datePicker').value;
+            const [startHour, startMinute] = startTimeStr.split(':').map(Number);
+            const [endHour, endMinute] = endTimeStr.split(':').map(Number);
+            
+            // Create Date objects
+            const startDateTime = getStartOfToday(dateString);
+            startDateTime.setHours(startHour, startMinute);
+            
+            const endDateTime = getStartOfToday(dateString);
+            endDateTime.setHours(endHour, endMinute);
+
+
+            if (!personName.trim() || !contactInfo.trim() || !purpose.trim()) {
+                showCustomMessage('預訂失敗', '預定人、聯絡方式和用途皆為必填欄位。', 'error');
+                showProcessingOverlay(false); // 隱藏遮罩
+                return;
+            }
+
+            if (endDateTime.getTime() <= startDateTime.getTime()) {
+                showCustomMessage('預訂失敗', '結束時間必須晚於開始時間。', 'error');
+                showProcessingOverlay(false); // 隱藏遮罩
+                return;
+            }
+            
+            if (endDateTime.getTime() - startDateTime.getTime() < TIME_INTERVAL_MINUTES * 60 * 1000) {
+                 showCustomMessage('預訂失敗', `預訂時長至少需要 ${TIME_INTERVAL_MINUTES} 分鐘。`, 'error');
+                 showProcessingOverlay(false); // 隱藏遮罩
+                 return;
+            }
+
+            if (checkConflict(roomName, startDateTime, endDateTime)) {
+                showCustomMessage('預訂衝突', '此時段已被預訂或與其他預訂有時間重疊，請重新選擇。', 'warning');
+                showProcessingOverlay(false); // 隱藏遮罩
+                return;
+            }
+
+            try {
+                // Prepare new booking object using ISO strings for Apps Script
+                const newBooking = {
+                    action: 'add',
+                    id: generateUUID(), // Client-generated unique ID
+                    roomName,
+                    startTime: startDateTime.toISOString(), // Send as ISO String
+                    endTime: endDateTime.toISOString(),     // Send as ISO String
+                    personName: personName.trim(), 
+                    contactInfo: contactInfo.trim(),
+                    purpose: purpose.trim(),
+                };
+                
+                // 傳送 POST 請求給 Apps Script
+                await withRetry(() => fetch(API_URL, {
+                    method: 'POST',
+                    // 確保 Content-Type 為 text/plain
+                    headers: { 'Content-Type': 'text/plain' }, 
+                    body: JSON.stringify(newBooking)
+                }));
+
+
+                showCustomMessage('預訂成功', `您已成功預訂 ${roomName}，時段：${startTimeStr}-${endTimeStr}。`, 'success');
+                
+                // 2. 確保 Google Sheet 有時間完成寫入操作
+                await new Promise(resolve => setTimeout(resolve, 750));
+
+                // 3. Refresh data after successful POST, this will re-render the dashboard
+                await fetchBookings(dateString); 
+            } catch (error) {
+                console.error("Error submitting booking: ", error);
+                showCustomMessage('預訂失敗', `無法完成預訂：${error.message}`, 'error');
+            } finally {
+                closeModal(); // 4. 在資料更新並顯示成功訊息後，才關閉模態框
+                showProcessingOverlay(false); // 5. 隱藏等待遮罩
+            }
+        };
+
+        /**
+         * Deletes a booking from Google Sheet via Apps Script, requires verification.
+         */
+        const deleteBooking = async (docId, requiredPersonName, requiredContactInfo) => {
+            showProcessingOverlay(true); // 顯示等待遮罩
+            const dateString = document.getElementById('datePicker').value;
+
+            const inputPersonName = document.getElementById('deletePersonName').value.trim();
+            const inputContactInfo = document.getElementById('deleteContactInfo').value.trim();
+
+            if (!inputPersonName || !inputContactInfo) {
+                showCustomMessage('驗證失敗', '請填寫所有驗證資訊。', 'error');
+                showProcessingOverlay(false); // 隱藏遮罩
+                return;
+            }
+
+            try {
+                const deletionData = {
+                    action: 'delete',
+                    id: docId,
+                    // Send verification data to Apps Script for server-side check
+                    personName: inputPersonName, 
+                    contactInfo: inputContactInfo
+                };
+
+                // 傳送 POST 請求給 Apps Script
+                await withRetry(() => fetch(API_URL, {
+                    method: 'POST',
+                    // 確保 Content-Type 為 text/plain
+                    headers: { 'Content-Type': 'text/plain' }, 
+                    body: JSON.stringify(deletionData)
+                }));
+                
+                showCustomMessage('取消成功', '預訂已成功取消。', 'success');
+                
+                // 確保 Google Sheet 有時間完成寫入操作
+                await new Promise(resolve => setTimeout(resolve, 750));
+
+                // Refresh data after successful DELETE
+                await fetchBookings(dateString); 
+            } catch (error) {
+                console.error("Error deleting booking: ", error);
+                // 顯示從 Apps Script 傳回的錯誤訊息 (例如驗證失敗)
+                showCustomMessage('取消失敗', `無法取消預訂：${error.message}`, 'error');
+            } finally {
+                closeModal();
+                showProcessingOverlay(false); // 隱藏等待遮罩
+            }
+        };
+
+
+        // --- UI Rendering Functions (Table View) ---
+
+        const renderDashboard = (dateString) => {
+            const container = document.getElementById('dashboardContainer');
+            let tableHTML = '<table class="schedule-table">';
+
+            // --- 1. Render Table Header (Time Headers) ---
+            tableHTML += '<thead><tr>';
+            tableHTML += '<th>場地名稱</th>'; // Fixed room name column
+            TIME_HEADERS.forEach(time => {
+                tableHTML += `<th>${time}</th>`;
+            });
+            tableHTML += '</tr></thead>';
+
+            // --- 2. Render Table Body (Room Schedules) ---
+            tableHTML += '<tbody>';
+            
+            ROOM_KEYS.forEach(roomKey => {
+                const roomName = ROOM_NAMES[roomKey];
+                // window.BOOKINGS already contains Date objects for the selected day
+                const roomBookings = window.BOOKINGS.filter(b => b.roomName === roomName);
+                
+                tableHTML += '<tr>';
+                tableHTML += `<td class="text-left">${roomName}</td>`; // Room Name Cell
+
+                let columnIndex = 0;
+                while (columnIndex < TIME_HEADERS.length) {
+                    const timeHeader = TIME_HEADERS[columnIndex]; 
+                    const [startHour, startMinute] = timeHeader.split(':').map(Number);
+                    
+                    const blockStart = getStartOfToday(dateString);
+                    blockStart.setHours(startHour, startMinute, 0, 0);
+                    const blockStartMs = blockStart.getTime();
+
+                    // Find a booking that overlaps with this 30-min block
+                    let booking = roomBookings.find(b => {
+                        // b.startTime/endTime are Date objects (now safely parsed)
+                        if (!b.startTime || !b.endTime) return false;
+                        const bStartMs = b.startTime.getTime(); 
+                        const bEndMs = b.endTime.getTime();
+                        const blockEndMs = blockStartMs + TIME_INTERVAL_MINUTES * 60 * 1000;
+                        return bStartMs < blockEndMs && bEndMs > blockStartMs;
+                    });
+
+
+                    if (booking) {
+                        const bStart = booking.startTime;
+                        const bEnd = booking.endTime;
+                        
+                        // 確保時間字串使用本地時間
+                        const bStartStr = String(bStart.getHours()).padStart(2, '0') + ':' + String(bStart.getMinutes()).padStart(2, '0');
+                        const bEndStr = String(bEnd.getHours()).padStart(2, '0') + ':' + String(bEnd.getMinutes()).padStart(2, '0');
+                        
+                        const isStartBlock = bStartStr === timeHeader;
+
+                        if (isStartBlock) {
+                            // Calculate colspan (duration in 30-minute intervals)
+                            const durationMs = bEnd.getTime() - bStart.getTime();
+                            const colspan = Math.round(durationMs / (TIME_INTERVAL_MINUTES * 60 * 1000));
+                            
+                            const purpose = booking.purpose || '無用途';
+                            const personName = booking.personName || '未知';
+                            
+                            // 根據房間名稱選擇不同的顏色類別
+                            const stateClass = (roomName === '討論室') ? 'slot-booked-room1' : 'slot-booked-room2'; 
+                            
+                            const timeRange = `${bStartStr}-${bEndStr}`;
+                            
+                            // *** FIX: 對傳入 openModal 的字串參數進行轉義，以避免引號中斷 JS 呼叫 ***
+                            const clickAction = `openModal('view', '${roomName}', '${timeRange}', '${booking.id}', '${personName.replace(/'/g, "\\'")}', '${booking.contactInfo.replace(/'/g, "\\'")}', '${purpose.replace(/'/g, "\\'")}')`;
+
+                            // Render the merged cell with Purpose and Person Name
+                            tableHTML += `
+                                <td colspan="${colspan}" class="${stateClass} time-slot" onclick="${clickAction}" title="${roomName}: ${timeRange} - ${purpose} - ${personName}">
+                                    ${purpose}
+                                    <span class="slot-details">預定人: ${personName}</span>
+                                </td>
+                            `;
+                            columnIndex += colspan; // Skip columns covered by this booking
+
+                        } else {
+                            // This block is covered by an ongoing booking, so we skip the cell (it was merged)
+                            columnIndex++;
+                        }
+                    } else {
+                        // Slot is available
+                        const clickAction = `openModal('book', '${roomName}', '${timeHeader}')`;
+                        tableHTML += `
+                            <td class="slot-available time-slot" onclick="${clickAction}">
+                                預訂
+                            </td>
+                        `;
+                        columnIndex++;
+                    }
+                }
+
+                tableHTML += '</tr>';
+            });
+            
+            tableHTML += '</tbody></table>';
+            container.innerHTML = tableHTML;
+        };
+        
+        /**
+         * 控制全螢幕等待遮罩的顯示與隱藏
+         * @param {boolean} show - true 為顯示, false 為隱藏
+         */
+        const showProcessingOverlay = (show) => {
+            const overlay = document.getElementById('processingOverlay');
+            if (show) {
+                overlay.classList.remove('hidden');
+                overlay.style.opacity = 1;
+            } else {
+                overlay.style.opacity = 0;
+                // 使用 setTimeout 確保動畫完成後再隱藏
+                setTimeout(() => {
+                    overlay.classList.add('hidden');
+                }, 300); 
+            }
+        };
+
+        // --- Modal Control and Custom Message ---
+
+        const showCustomMessage = (title, message, type) => {
+            const modal = document.getElementById('bookingModal');
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalMessage').textContent = message;
+            document.getElementById('bookingFormContent').classList.add('hidden');
+            document.getElementById('deletionConfirmationContent').classList.add('hidden');
+            
+            const primaryBtn = document.getElementById('modalPrimaryButton');
+            primaryBtn.classList.add('hidden');
+            
+            modal.classList.remove('hidden', 'opacity-0');
+            modal.classList.add('flex', 'opacity-100');
+
+            // Close after 3 seconds for notification messages
+            if (type !== 'book' && type !== 'view') {
+                setTimeout(() => {
+                    closeModal();
+                }, 3000);
+            }
+        }
+
+        /**
+         * Dynamically generates end time options (30-minute increments) based on start time
+         */
+        const generateEndTimeOptions = (startTimeStr) => {
+            const [startHour, startMinute] = startTimeStr.split(':').map(Number);
+            const select = document.getElementById('endTimeSelect');
+            select.innerHTML = ''; 
+
+            const startMinutes = startHour * 60 + startMinute;
+            const maxEndMinutes = END_HOUR * 60; // 18:00
+
+            // Generate options every TIME_INTERVAL_MINUTES (30 min), starting from 1 interval after start time
+            for (let m = startMinutes + TIME_INTERVAL_MINUTES; m <= maxEndMinutes; m += TIME_INTERVAL_MINUTES) {
+                const endTimeStr = minutesToTimeString(m);
+                
+                const option = document.createElement('option');
+                option.value = endTimeStr;
+                option.textContent = endTimeStr; 
+                select.appendChild(option);
+            }
+        }
+
+
+        window.openModal = (type, roomName, timeSlot, docId = null, personName = null, contactInfo = null, purpose = null) => {
+            // timeSlot is either the 30-min start time (e.g., '09:30') or the full booking time (e.g., '09:00-11:00')
+            let startTime = timeSlot;
+            let endTime = '';
+
+            if (timeSlot.includes('-')) {
+                [startTime, endTime] = timeSlot.split('-'); 
+            }
+            
+            // Reset modal state
+            document.getElementById('bookingModal').classList.remove('hidden', 'opacity-0');
+            document.getElementById('bookingModal').classList.add('flex', 'opacity-100');
+            document.getElementById('bookingFormContent').classList.add('hidden');
+            document.getElementById('deletionConfirmationContent').classList.add('hidden');
+            document.getElementById('personName').value = ''; // Clear fields for booking
+            document.getElementById('contactInfo').value = '';
+            document.getElementById('purpose').value = '';
+            document.getElementById('deletePersonName').value = ''; // Clear fields for deletion
+            document.getElementById('deleteContactInfo').value = '';
+
+
+            const modalTitle = document.getElementById('modalTitle');
+            const modalMessage = document.getElementById('modalMessage');
+            const primaryBtn = document.getElementById('modalPrimaryButton');
+            primaryBtn.classList.remove('hidden', 'bg-red-600', 'hover:bg-red-700');
+            primaryBtn.classList.add('bg-sky-600', 'hover:bg-sky-700');
+
+            // Store verification details for deletion
+            window.currentAction = { type, roomName, startTime, endTime, docId, personName, contactInfo, purpose };
+
+            if (type === 'book') {
+                modalTitle.textContent = `預訂 ${roomName}`;
+                modalMessage.textContent = `您將預訂從 ${startTime} 開始的時段。請填寫資訊並選擇結束時間 (以 ${TIME_INTERVAL_MINUTES} 分鐘為單位遞增)。`;
+                document.getElementById('bookingFormContent').classList.remove('hidden');
+                primaryBtn.textContent = '確認預訂';
+                
+                document.getElementById('startTimeDisplay').value = startTime;
+                generateEndTimeOptions(startTime); 
+                document.getElementById('endTimeSelect').selectedIndex = 0; 
+
+            } else if (type === 'view') {
+                modalTitle.textContent = `查看與取消預訂 ${roomName}`;
+                modalMessage.innerHTML = `
+                    <div class="text-left space-y-2 p-3 bg-blue-50 rounded-lg">
+                        <p><strong>時段：</strong> <span class="text-sky-700">${startTime}-${endTime}</span></p>
+                        <p><strong>用途：：</strong> ${purpose}</p>
+                        <p><strong>預定人：：</strong> ${personName}</p>
+                        <p><strong>聯絡方式：</strong> ${contactInfo}</p>
+                    </div>
+                `;
+                
+                // Set the modal state to 'delete' and show the verification form
+                document.getElementById('deletionConfirmationContent').classList.remove('hidden');
+                primaryBtn.textContent = '確認資訊並取消預訂';
+                primaryBtn.classList.remove('bg-sky-600', 'hover:bg-sky-700');
+                primaryBtn.classList.add('bg-red-600', 'hover:bg-red-700');
+                window.currentAction.type = 'delete_verify'; // Change action type for submission
+            } 
+        };
+
+        window.closeModal = () => {
+            document.getElementById('bookingModal').classList.add('hidden', 'opacity-0');
+            document.getElementById('bookingModal').classList.remove('flex', 'opacity-100');
+            window.currentAction = { type: 'none', roomName: null, startTime: null, endTime: null, docId: null };
+        };
+
+        window.submitModalAction = () => {
+            const action = window.currentAction;
+            if (action.type === 'book') {
+                const personName = document.getElementById('personName').value;
+                const contactInfo = document.getElementById('contactInfo').value;
+                const purpose = document.getElementById('purpose').value;
+                const selectedEndTimeStr = document.getElementById('endTimeSelect').value; 
+                submitBooking(action.roomName, action.startTime, selectedEndTimeStr, personName, contactInfo, purpose);
+            } else if (action.type === 'delete_verify') {
+                // Perform deletion verification
+                deleteBooking(action.docId, action.personName, action.contactInfo);
+            }
+        };
+
+        // --- Event Listeners and Initial Setup ---
+
+        const setupDateListener = () => {
+            const datePicker = document.getElementById('datePicker');
+            const today = new Date();
+            datePicker.value = formatDate(today); // Set default to today
+            datePicker.addEventListener('change', (e) => {
+                fetchBookings(e.target.value);
+            });
+        };
+
+        // Initialize on window load
+        window.onload = initializeApp;
+
+    </script>
+</body>
+</html>

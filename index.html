@@ -6,28 +6,55 @@
     <title>奇美醫院教學部討論室借用系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-    <!-- Tippy.js for custom tooltips -->
-    <script src="https://unpkg.com/@popperjs/core@2"></script>
+    <!-- Tippy.js for custom tooltips --><script src="https://unpkg.com/@popperjs/core@2"></script>
     <script src="https://unpkg.com/tippy.js@6"></script>
     <style>
-        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f0f9ff; }
-        .header-gradient { background: linear-gradient(120deg, #84fab0 0%, #8fd3f4 100%); }
-        .btn-primary { background-color: #22c55e; color: white; transition: background-color: 0.3s; }
-        .btn-primary:hover { background-color: #16a34a; }
-        .btn-danger { background-color: #ef4444; color: white; transition: background-color: 0.3s; }
-        .btn-danger:hover { background-color: #dc2626; }
+        body { 
+            font-family: 'Noto Sans TC', sans-serif; 
+            background-color: #f7f9fa; /* 改為非常淺的灰色 */
+        }
+        /* 參考新的藍橘配色 */
+        .header-gradient { 
+            background: #223a5e; /* 深藍色底色 */
+        }
+        .btn-primary { 
+            background-color: #f39c12; /* 亮橘色 */
+            color: white; 
+            transition: background-color: 0.3s; 
+        }
+        .btn-primary:hover { 
+            background-color: #e67e22; /* 稍深的橘色 */
+        }
+        .btn-danger { 
+            background-color: #e74c3c; /* 經典紅色 */
+            color: white; 
+            transition: background-color: 0.3s; 
+        }
+        .btn-danger:hover { 
+            background-color: #c0392b; 
+        }
         .modal-backdrop { transition: opacity 0.3s ease-in-out; }
         .time-slot-cell { transition: all 0.2s ease; position: relative; }
-        .time-slot-cell.available:hover { background-color: #d1fae5; transform: scale(1.05); z-index: 10; }
-        .booked-slot { display: flex; align-items: center; justify-content: center; padding: 4px; font-size: 0.8rem; color: white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.2; }
-        .input-field { padding: 0.75rem; font-size: 1rem; }
-        .header-text-shadow { text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.25); }
+        .time-slot-cell.available:hover { 
+            background-color: #fef5e7; /* 淺橘色 hover */
+            transform: scale(1.05); 
+            z-index: 10; 
+        }
+        .booked-slot { 
+            display: flex; align-items: center; justify-content: center; padding: 4px; font-size: 0.8rem; color: white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.2; 
+        }
+        .input-field { 
+            padding: 0.75rem; font-size: 1rem; 
+        }
+        .header-text-shadow { 
+            text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.25); 
+        }
         #loader { transition: opacity 0.3s; }
         /* Calendar Styles */
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
         .calendar-day { 
             background-color: #fff; 
-            border: 1px solid #e5e7eb; 
+            border: 1px solid #eef2f5; /* 淺灰藍邊框 */
             border-radius: 0.5rem; 
             padding: 8px; 
             transition: all 0.2s; 
@@ -37,30 +64,29 @@
             min-height: 90px;
         }
         .calendar-day:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
-        .calendar-day.other-month { background-color: #f9fafb; color: #9ca3af; cursor: not-allowed; }
-        .calendar-day.is-today .day-number { font-weight: bold; color: #3b82f6; }
-        .calendar-day.is-selected { background-color: #bfdbfe; border-color: #60a5fa; }
-        .calendar-day.is-weekend .day-number { color: #991b1b; } /* Wine red for weekends */
+        .calendar-day.other-month { background-color: #fcfdfd; color: #9ca3af; cursor: not-allowed; }
+        .calendar-day.is-today .day-number { font-weight: bold; color: #f39c12; } /* 配合新的主色 (橘色) */
+        .calendar-day.is-selected { background-color: #dbe4f0; border-color: #223a5e; } /* 選中狀態 (淺藍) */
+        .calendar-day.is-weekend .day-number { color: #c0392b; } /* 柔和的週末紅 */
         .booking-dot { min-width: 8px; width: 8px; height: 8px; border-radius: 50%; }
         .calendar-booking-item { display: flex; align-items: center; font-size: 0.7rem; margin-top: 2px; overflow: hidden; }
-        .holiday-name { font-size: 0.65rem; color: #991b1b; text-align: center; font-weight: 500; margin-top: auto; }
+        .holiday-name { font-size: 0.65rem; color: #c0392b; text-align: center; font-weight: 500; margin-top: auto; }
         /* Custom Tippy.js Tooltip Style */
         .tippy-box[data-theme~='light-border'] {
             background-color: #ffffff;
             color: #334155;
-            border: 2px solid #3b82f6;
+            border: 2px solid #223a5e; /* 配合新的主色 (深藍) */
             border-radius: 8px;
             font-family: 'Noto Sans TC', sans-serif;
             box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
         }
-        .tippy-box[data-theme~='light-border'][data-placement^='top'] > .tippy-arrow::before { border-top-color: #3b82f6; }
-        .tippy-box[data-theme~='light-border'][data-placement^='bottom'] > .tippy-arrow::before { border-bottom-color: #3b82f6; }
+        .tippy-box[data-theme~='light-border'][data-placement^='top'] > .tippy-arrow::before { border-top-color: #223a5e; }
+        .tippy-box[data-theme~='light-border'][data-placement^='bottom'] > .tippy-arrow::before { border-bottom-color: #223a5e; }
         .tippy-content { padding: 8px 12px; white-space: pre-wrap; }
     </style>
 </head>
 <body class="p-4 md:p-8">
-    <!-- Loading Overlay -->
-    <div id="loader" class="fixed inset-0 z-[99] bg-white bg-opacity-70 flex justify-center items-center pointer-events-none opacity-0">
+    <!-- Loading Overlay --><div id="loader" class="fixed inset-0 z-[99] bg-white bg-opacity-70 flex justify-center items-center pointer-events-none opacity-0">
         <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-500"></div>
     </div>
 
@@ -77,12 +103,10 @@
 
         <div class="bg-white rounded-2xl shadow-xl overflow-x-auto mb-8">
             <div id="schedule-container" class="min-w-[1200px] p-4 md:p-6 relative">
-                <!-- Schedule grid will be generated here by JS -->
-            </div>
+                <!-- Schedule grid will be generated here by JS --></div>
         </div>
 
-        <!-- Calendar Section -->
-        <div id="calendar-wrapper" class="bg-white rounded-2xl shadow-xl p-4 md:p-6">
+        <!-- Calendar Section --><div id="calendar-wrapper" class="bg-white rounded-2xl shadow-xl p-4 md:p-6">
             <div>
                 <div id="calendar-header" class="flex justify-between items-center mb-4">
                     <button id="prev-month-btn" class="p-2 rounded-full hover:bg-gray-100">&lt;</button>
@@ -93,28 +117,26 @@
                     <div class="text-red-700">日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div class="text-red-700">六</div>
                 </div>
                 <div id="calendar-grid" class="calendar-grid">
-                    <!-- Calendar days will be generated here by JS -->
-                </div>
+                    <!-- Calendar days will be generated here by JS --></div>
             </div>
         </div>
     </div>
 
-    <!-- Modals (same as before) -->
-    <div id="booking-modal" class="fixed inset-0 z-50 bg-black bg-opacity-50 flex justify-center items-center p-4 modal-backdrop opacity-0 pointer-events-none">
+    <!-- Modals (same as before) --><div id="booking-modal" class="fixed inset-0 z-50 bg-black bg-opacity-50 flex justify-center items-center p-4 modal-backdrop opacity-0 pointer-events-none">
         <div class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-lg transform scale-95 transition-transform duration-300">
             <h3 class="text-2xl font-bold mb-4 text-gray-800">預約時段</h3>
-            <div class="bg-blue-50 p-4 rounded-lg mb-6">
+            <div class="bg-amber-50 p-4 rounded-lg mb-6">
                 <div class="flex justify-between items-center text-center">
-                    <div><p class="text-sm text-gray-500">房間</p><p id="modal-room-name" class="font-bold text-lg text-blue-600"></p></div>
+                    <div><p class="text-sm text-gray-500">房間</p><p id="modal-room-name" class="font-bold text-lg text-amber-600"></p></div>
                     <div><p class="text-sm text-gray-500">日期</p><p id="modal-date" class="font-semibold text-lg"></p></div>
                     <div><p class="text-sm text-gray-500">從</p><p id="modal-start-time" class="font-semibold text-lg"></p></div>
                     <div><p class="text-sm text-gray-500">到</p><select id="end-time-select" class="font-semibold text-lg bg-transparent border-none focus:ring-0 p-0 pr-7"></select></div>
                 </div>
             </div>
             <div class="space-y-4">
-                <div><label for="booker-name" class="block text-sm font-medium text-gray-700 mb-1">借用者姓名:</label><input type="text" id="booker-name" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 input-field" placeholder="例如：王大明"></div>
-                <div><label for="booker-contact" class="block text-sm font-medium text-gray-700 mb-1">聯絡方式:</label><input type="text" id="booker-contact" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 input-field" placeholder="分機或手機號碼"></div>
-                <div><label for="booking-purpose" class="block text-sm font-medium text-gray-700 mb-1">預定用途:</label><textarea id="booking-purpose" rows="3" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 input-field" placeholder="例如：專案會議、部門訓練"></textarea></div>
+                <div><label for="booker-name" class="block text-sm font-medium text-gray-700 mb-1">借用者姓名:</label><input type="text" id="booker-name" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-amber-500 focus:border-amber-500 input-field" placeholder="例如：王大明"></div>
+                <div><label for="booker-contact" class="block text-sm font-medium text-gray-700 mb-1">聯絡方式:</label><input type="text" id="booker-contact" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-amber-500 focus:border-amber-500 input-field" placeholder="分機或手機號碼"></div>
+                <div><label for="booking-purpose" class="block text-sm font-medium text-gray-700 mb-1">預定用途:</label><textarea id="booking-purpose" rows="3" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-amber-500 focus:border-amber-500 input-field" placeholder="例如：專案會議、部門訓練"></textarea></div>
             </div>
             <div class="mt-8 flex justify-end space-x-4">
                 <button class="close-modal-btn px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors">關閉</button>
@@ -125,18 +147,18 @@
     <div id="edit-modal" class="fixed inset-0 z-50 bg-black bg-opacity-50 flex justify-center items-center p-4 modal-backdrop opacity-0 pointer-events-none">
         <div class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-lg transform scale-95 transition-transform duration-300">
             <h3 class="text-2xl font-bold mb-4 text-gray-800">編輯預約</h3>
-            <div class="bg-yellow-50 p-4 rounded-lg mb-6">
+            <div class="bg-blue-50 p-4 rounded-lg mb-6">
                 <div class="flex justify-between items-center text-center">
-                    <div><p class="text-sm text-gray-500">房間</p><p id="edit-modal-room-name" class="font-bold text-lg text-yellow-600"></p></div>
+                    <div><p class="text-sm text-gray-500">房間</p><p id="edit-modal-room-name" class="font-bold text-lg text-blue-600"></p></div>
                     <div><p class="text-sm text-gray-500">日期</p><p id="edit-modal-date" class="font-semibold text-lg"></p></div>
                     <div><p class="text-sm text-gray-500">從</p><p id="edit-modal-start-time" class="font-semibold text-lg"></p></div>
                     <div><p class="text-sm text-gray-500">到</p><select id="edit-end-time-select" class="font-semibold text-lg bg-transparent border-none focus:ring-0 p-0 pr-7"></select></div>
                 </div>
             </div>
             <div class="space-y-4">
-                <div><label for="edit-booker-name" class="block text-sm font-medium text-gray-700 mb-1">借用者姓名:</label><input type="text" id="edit-booker-name" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-yellow-500 focus:border-yellow-500 input-field"></div>
-                <div><label for="edit-booker-contact" class="block text-sm font-medium text-gray-700 mb-1">聯絡方式:</label><input type="text" id="edit-booker-contact" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-yellow-500 focus:border-yellow-500 input-field"></div>
-                <div><label for="edit-booking-purpose" class="block text-sm font-medium text-gray-700 mb-1">預定用途:</label><textarea id="edit-booking-purpose" rows="3" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-yellow-500 focus:border-yellow-500 input-field"></textarea></div>
+                <div><label for="edit-booker-name" class="block text-sm font-medium text-gray-700 mb-1">借用者姓名:</label><input type="text" id="edit-booker-name" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 input-field"></div>
+                <div><label for="edit-booker-contact" class="block text-sm font-medium text-gray-700 mb-1">聯絡方式:</label><input type="text" id="edit-booker-contact" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 input-field"></div>
+                <div><label for="edit-booking-purpose" class="block text-sm font-medium text-gray-700 mb-1">預定用途:</label><textarea id="edit-booking-purpose" rows="3" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 input-field"></textarea></div>
             </div>
             <div class="mt-8 flex justify-between items-center">
                  <button id="trigger-cancel-btn" class="px-6 py-2 btn-danger rounded-lg font-semibold">取消此預約</button>
@@ -160,15 +182,16 @@
         const HOLIDAY_API_URL = 'https://cdn.jsdelivr.net/gh/ruyut/TaiwanCalendar/data/{year}.json';
         // --- 設定區結束 ---
 
-        let currentDailyBookings = [];
-        let currentMonthBookings = [];
+        let currentDailyBookings = []; 
+        let currentMonthBookings = []; 
         let calendarDate = new Date(); 
         let holidays = {};
         let tippyInstances = [];
         
+        // 調整房間顏色以符合新的配色風格
         const rooms = [
-            { id: 1, name: '討論室', color: 'bg-teal-500' },
-            { id: 2, name: '多功能室', color: 'bg-orange-500' },
+            { id: 1, name: '討論室', color: 'bg-blue-900' }, // 深藍色
+            { id: 2, name: '多功能室', color: 'bg-amber-500' }, // 琥珀色/橘色
         ];
         
         // DOM Elements
@@ -331,6 +354,11 @@
             });
         };
 
+        const renderScheduleFromMonthData = (dateString) => {
+            const dailyData = currentMonthBookings.filter(b => b['預約日期'] === dateString);
+            renderSchedule(dailyData);
+        }
+
         const renderCalendar = (date, monthBookings) => {
             tippyInstances.forEach(instance => instance.destroy());
             tippyInstances = [];
@@ -457,35 +485,17 @@
                 if (!response.ok) throw new Error('無法讀取月曆資料');
                 const result = await response.json();
                 if (result.status !== 'success') throw new Error(result.message);
-                renderCalendar(calendarDate, result.data);
+                // 載入月曆資料，並將資料存入 currentMonthBookings
+                renderCalendar(calendarDate, result.data); 
             } catch (error) {
                 console.error("Fetch month bookings error:", error);
                 await customAlert(`讀取月曆資料失敗: ${error.message}`);
-                renderCalendar(calendarDate, []);
+                renderCalendar(calendarDate, []); // 即使失敗也渲染空日曆
             } finally {
                 hideLoader();
             }
         }
         
-        async function fetchDailyBookings() {
-            if (WEB_APP_URL.includes('YOUR_WEB_APP_URL')) return;
-            showLoader();
-            try {
-                const date = datePicker.value;
-                const response = await fetch(`${WEB_APP_URL}?date=${date}`);
-                if (!response.ok) throw new Error(`無法從 Google Sheet 讀取資料 (HTTP ${response.status})`);
-                const result = await response.json();
-                if(result.status === 'error') throw new Error(result.message);
-                renderSchedule(result.data);
-            } catch (error) {
-                console.error("Fetch bookings error:", error);
-                await customAlert(`讀取預約資料失敗：${error.message}`);
-                renderSchedule([]);
-            } finally {
-                hideLoader();
-            }
-        }
-
         function showBookingModal(roomName, startTime) {
             bookingModal.classList.remove('opacity-0', 'pointer-events-none');
             bookingModal.querySelector('div').classList.remove('scale-95');
@@ -562,7 +572,8 @@
                 hideAllModals();
 
                 renderSchedule(result.data);
-                await updateCalendarView();
+                await updateCalendarView(); 
+                renderScheduleFromMonthData(datePicker.value); 
                 
                 await customAlert(successMessage);
             } catch (error) {
@@ -619,22 +630,25 @@
         calendarGrid.addEventListener('click', (e) => {
             const dayCell = e.target.closest('.calendar-day');
             if (dayCell && dayCell.dataset.date && !dayCell.classList.contains('other-month')) {
-                // Remove the blue selected style on click
-                document.querySelectorAll('.calendar-day.is-selected').forEach(el => el.classList.remove('is-selected'));
-                // dayCell.classList.add('is-selected'); // We remove this line
                 datePicker.value = dayCell.dataset.date;
-                datePicker.dispatchEvent(new Event('change'));
+                datePicker.dispatchEvent(new Event('change')); 
             }
         });
         
-        prevMonthBtn.addEventListener('click', () => {
+        prevMonthBtn.addEventListener('click', async () => {
             calendarDate.setMonth(calendarDate.getMonth() - 1);
-            updateCalendarView();
+            await updateCalendarView();
+            const firstDayOfMonth = formatDate(calendarDate);
+            datePicker.value = firstDayOfMonth;
+            renderScheduleFromMonthData(firstDayOfMonth);
         });
 
-        nextMonthBtn.addEventListener('click', () => {
+        nextMonthBtn.addEventListener('click', async () => {
             calendarDate.setMonth(calendarDate.getMonth() + 1);
-            updateCalendarView();
+            await updateCalendarView();
+            const firstDayOfMonth = formatDate(calendarDate);
+            datePicker.value = firstDayOfMonth;
+            renderScheduleFromMonthData(firstDayOfMonth);
         });
 
         document.getElementById('confirm-booking-btn').addEventListener('click', handleConfirmBooking);
@@ -646,27 +660,35 @@
         
         document.querySelectorAll('.close-modal-btn').forEach(btn => btn.addEventListener('click', hideAllModals));
         
-        datePicker.addEventListener('change', () => {
-            const [year, month, day] = datePicker.value.split('-').map(Number);
-            const newDate = new Date(year, month - 1, day, 12); // Use noon to avoid timezone issues
-            
-            if (newDate.getFullYear() !== calendarDate.getFullYear() || newDate.getMonth() !== calendarDate.getMonth()) {
-                calendarDate = new Date(newDate.getFullYear(), newDate.getMonth(), 1);
-                updateCalendarView();
+        datePicker.addEventListener('change', async () => {
+            const newDateStr = datePicker.value;
+            const [year, month, day] = newDateStr.split('-').map(Number);
+            const newDate = new Date(Date.UTC(year, month - 1, day, 12)); 
+
+            const currentMonth = new Date(Date.UTC(calendarDate.getFullYear(), calendarDate.getMonth(), 1, 12));
+
+            if (newDate.getUTCFullYear() !== currentMonth.getUTCFullYear() || newDate.getUTCMonth() !== currentMonth.getUTCMonth()) {
+                calendarDate = new Date(newDate.getUTCFullYear(), newDate.getUTCMonth(), 1);
+                await updateCalendarView(); 
             } else {
                 renderCalendar(calendarDate, currentMonthBookings);
             }
-            fetchDailyBookings();
+            
+            renderScheduleFromMonthData(newDateStr);
         });
 
-        window.addEventListener('load', () => {
+        window.addEventListener('load', async () => {
             const today = new Date();
-            datePicker.value = formatDate(today);
+            const todayStr = formatDate(today);
+            datePicker.value = todayStr;
             calendarDate = new Date(today.getFullYear(), today.getMonth(), 1);
-            fetchDailyBookings();
-            updateCalendarView();
+            
+            await updateCalendarView(); 
+            
+            renderScheduleFromMonthData(todayStr);
         });
     </script>
 </body>
 </html>
+
 

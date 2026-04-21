@@ -3,212 +3,564 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>奇美醫院教學部討論室借用系統</title>
+    <title>奇美醫院教學部討論室預約系統</title>
+    
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-    <!-- Tippy.js for custom tooltips --><script src="https://unpkg.com/@popperjs/core@2"></script>
+    
+    <!-- Tippy.js for custom tooltips -->
+    <script src="https://unpkg.com/@popperjs/core@2"></script>
     <script src="https://unpkg.com/tippy.js@6"></script>
+    
+    <!-- Custom Styles -->
     <style>
+        :root {
+            --okc-navy: #002D62;
+            --okc-light-blue: #007AC1;
+            --okc-orange: #EF3B24;
+        }
+
         body { 
             font-family: 'Noto Sans TC', sans-serif; 
-            background-color: #f7f9fa; /* 改為非常淺的灰色 */
+            /* 質感點陣背景 */
+            background-color: #f4f7f9;
+            background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+            background-size: 24px 24px;
+            position: relative;
+            min-height: 100vh;
         }
-        /* 參考新的藍橘配色 */
-        .header-gradient { 
-            background: #223a5e; /* 深藍色底色 */
+
+        /* 系統層級動態光暈 (活潑感) */
+        .bg-shapes {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            z-index: -1;
+            overflow: hidden;
+            pointer-events: none;
         }
+        .bg-shape-1 {
+            position: absolute; top: -15%; left: -5%;
+            width: 50vw; height: 50vw;
+            background: radial-gradient(circle, rgba(0, 122, 193, 0.08) 0%, transparent 60%);
+            border-radius: 50%;
+            animation: float 18s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: transform;
+        }
+        .bg-shape-2 {
+            position: absolute; bottom: -10%; right: -5%;
+            width: 40vw; height: 40vw;
+            background: radial-gradient(circle, rgba(239, 59, 36, 0.05) 0%, transparent 60%);
+            border-radius: 50%;
+            animation: float 22s infinite alternate-reverse cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: transform;
+        }
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(40px, 60px) scale(1.1); }
+        }
+
+        /* 系統頂部導覽列 (玻璃擬物風) */
+        .system-navbar {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 30px -5px rgba(0, 0, 0, 0.05);
+        }
+
+        /* 高級質感卡片 (毛玻璃效果) */
+        .premium-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 10px 40px -10px rgba(0,0,0,0.06);
+            border-radius: 1.25rem;
+        }
+
+        /* 按鈕與元件設計 */
         .btn-primary { 
-            background-color: #f39c12; /* 亮橘色 */
+            background-color: var(--okc-orange); 
             color: white; 
-            transition: background-color: 0.3s; 
+            transition: all 0.2s ease-in-out; 
+            box-shadow: 0 4px 12px -2px rgba(239, 59, 36, 0.4);
         }
         .btn-primary:hover { 
-            background-color: #e67e22; /* 稍深的橘色 */
+            background-color: #d1301c; 
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px -2px rgba(209, 48, 28, 0.5);
         }
         .btn-danger { 
-            background-color: #e74c3c; /* 經典紅色 */
+            background-color: #ef4444; 
             color: white; 
-            transition: background-color: 0.3s; 
+            transition: all 0.2s ease-in-out; 
         }
-        .btn-danger:hover { 
-            background-color: #c0392b; 
+        .btn-danger:hover { background-color: #dc2626; }
+        
+        .input-field {
+            width: 100%;
+            padding: 0.6rem 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            background: rgba(255, 255, 255, 0.9);
+            transition: all 0.2s;
         }
-        .modal-backdrop { transition: opacity 0.3s ease-in-out; }
-        .time-slot-cell { transition: all 0.2s ease; position: relative; }
+        .input-field:focus {
+            outline: none;
+            border-color: var(--okc-light-blue);
+            box-shadow: 0 0 0 3px rgba(0, 122, 193, 0.15);
+            background: #fff;
+        }
+
+        /* 模態框動畫與背景修復 */
+        .modal-backdrop { 
+            transition: opacity 0.3s ease-out, visibility 0.3s ease-out; 
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+        .modal-hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+        .modal-visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease-out;
+        }
+        .modal-hidden .modal-content {
+            transform: scale(0.95) translateY(10px);
+            opacity: 0;
+        }
+        .modal-visible .modal-content {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+        }
+
+        /* 時間表網格 */
+        .time-slot-cell { 
+            transition: background-color 0.15s ease; 
+            position: relative; 
+        }
         .time-slot-cell.available:hover { 
-            background-color: #fef5e7; /* 淺橘色 hover */
-            transform: scale(1.05); 
+            background-color: #fff3ed; /* 帶橘的淺色 */
             z-index: 10; 
         }
         .booked-slot { 
-            display: flex; align-items: center; justify-content: center; padding: 4px; font-size: 0.8rem; color: white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.2; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 4px; 
+            font-size: 0.85rem; 
+            color: white; 
+            overflow: hidden; 
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
-        .input-field { 
-            padding: 0.75rem; font-size: 1rem; 
+        .booked-slot:hover {
+            transform: scale(1.02) translateY(-1px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+            z-index: 25 !important;
         }
-        .header-text-shadow { 
-            text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.25); 
+        .booked-slot-inner {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-align: center;
+            line-height: 1.3;
         }
-        #loader { transition: opacity 0.3s; }
-        /* Calendar Styles */
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+
+        /* 月曆樣式 */
+        .calendar-grid { 
+            display: grid; 
+            grid-template-columns: repeat(7, 1fr); 
+            gap: 8px; 
+        }
         .calendar-day { 
-            background-color: #fff; 
-            border: 1px solid #eef2f5; /* 淺灰藍邊框 */
-            border-radius: 0.5rem; 
+            background-color: rgba(255, 255, 255, 0.6); 
+            border: 1px solid #e2e8f0; 
+            border-radius: 0.75rem; 
             padding: 8px; 
-            transition: all 0.2s; 
+            transition: all 0.2s ease; 
             cursor: pointer; 
             display: flex; 
             flex-direction: column;
-            min-height: 90px;
+            min-height: 100px;
+            position: relative;
         }
-        .calendar-day:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
-        .calendar-day.other-month { background-color: #fcfdfd; color: #9ca3af; cursor: not-allowed; }
-        .calendar-day.is-today .day-number { font-weight: bold; color: #f39c12; } /* 配合新的主色 (橘色) */
-        .calendar-day.is-selected { background-color: #dbe4f0; border-color: #223a5e; } /* 選中狀態 (淺藍) */
-        .calendar-day.is-weekend .day-number { color: #c0392b; } /* 柔和的週末紅 */
-        .booking-dot { min-width: 8px; width: 8px; height: 8px; border-radius: 50%; }
-        .calendar-booking-item { display: flex; align-items: center; font-size: 0.7rem; margin-top: 2px; overflow: hidden; }
-        .holiday-name { font-size: 0.65rem; color: #c0392b; text-align: center; font-weight: 500; margin-top: auto; }
-        /* Custom Tippy.js Tooltip Style */
-        .tippy-box[data-theme~='light-border'] {
+        .calendar-day:hover:not(.other-month) { 
             background-color: #ffffff;
-            color: #334155;
-            border: 2px solid #223a5e; /* 配合新的主色 (深藍) */
-            border-radius: 8px;
-            font-family: 'Noto Sans TC', sans-serif;
-            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            border-color: #cbd5e1;
+            box-shadow: 0 4px 12px -2px rgb(0 0 0 / 0.05); 
+            transform: translateY(-1px);
         }
-        .tippy-box[data-theme~='light-border'][data-placement^='top'] > .tippy-arrow::before { border-top-color: #223a5e; }
-        .tippy-box[data-theme~='light-border'][data-placement^='bottom'] > .tippy-arrow::before { border-bottom-color: #223a5e; }
-        .tippy-content { padding: 8px 12px; white-space: pre-wrap; }
+        .calendar-day.other-month { 
+            background-color: transparent; 
+            color: #cbd5e1; 
+            border-color: transparent;
+            cursor: default; 
+        }
+        .calendar-day.is-today {
+            border: 2px solid var(--okc-orange);
+            background-color: #fffaf9;
+        }
+        .calendar-day.is-today .day-number { 
+            background-color: var(--okc-orange); 
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            font-weight: bold;
+        }
+        .calendar-day.is-selected { 
+            background-color: #f0f7fb; 
+            border-color: var(--okc-light-blue); 
+        }
+        .calendar-day.is-weekend .day-number { color: #ef4444; }
+        
+        .booking-dot { min-width: 8px; width: 8px; height: 8px; border-radius: 50%; }
+        .calendar-booking-item { display: flex; align-items: center; font-size: 0.75rem; margin-top: 4px; overflow: hidden; color: #475569; }
+        .holiday-name { font-size: 0.7rem; color: #ef4444; text-align: center; font-weight: 500; margin-top: auto; padding-top: 4px; border-top: 1px dashed #fca5a5;}
+
+        /* Tippy.js Theme */
+        .tippy-box[data-theme~='chimei'] {
+            background-color: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(8px);
+            color: #1e293b;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.75rem;
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+            font-family: 'Noto Sans TC', sans-serif;
+        }
+        .tippy-box[data-theme~='chimei'][data-placement^='top'] > .tippy-arrow::before { border-top-color: #e2e8f0; }
+        .tippy-box[data-theme~='chimei'][data-placement^='bottom'] > .tippy-arrow::before { border-bottom-color: #e2e8f0; }
+        .tippy-content { padding: 12px; }
+
+        /* Loader */
+        .loader-spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid var(--okc-orange);
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* 隱藏滾動條但保留功能 */
+        .custom-scrollbar::-webkit-scrollbar { height: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
-<body class="p-4 md:p-8">
-    <!-- Loading Overlay --><div id="loader" class="fixed inset-0 z-[99] bg-white bg-opacity-70 flex justify-center items-center pointer-events-none opacity-0">
-        <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-500"></div>
+<body class="text-slate-800">
+
+    <!-- 動態背景裝飾 -->
+    <div class="bg-shapes">
+        <div class="bg-shape-1"></div>
+        <div class="bg-shape-2"></div>
     </div>
 
-    <div class="max-w-7xl mx-auto">
-        <header class="text-center mb-8 p-6 rounded-xl shadow-lg header-gradient">
-            <h1 class="text-4xl font-bold text-white header-text-shadow">奇美醫院教學部討論室借用系統</h1>
-            <p class="text-white/90 mt-2 header-text-shadow">即時查看與預約，讓會議安排更輕鬆！</p>
-        </header>
+    <!-- 全域載入遮罩 -->
+    <div id="loader" class="fixed inset-0 z-[100] bg-slate-900 bg-opacity-40 flex flex-col justify-center items-center pointer-events-none opacity-0 transition-opacity duration-300 backdrop-blur-sm">
+        <div class="loader-spinner mb-4 bg-white rounded-full p-1 shadow-lg"></div>
+        <p class="text-white font-medium text-lg drop-shadow-md tracking-wide">處理中，請稍候...</p>
+    </div>
 
-        <div class="flex flex-col md:flex-row justify-center items-center mb-8 bg-white p-4 rounded-lg shadow-md gap-4">
-            <label for="date-picker" class="text-lg font-semibold text-gray-700">選擇日期：</label>
-            <input type="date" id="date-picker" class="border-2 border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-400 focus:border-blue-400">
+    <!-- 系統頂部導覽列 Navbar -->
+    <nav class="system-navbar fixed top-0 w-full z-40 h-16 flex items-center justify-center border-b border-slate-200/60">
+        <div class="w-full max-w-[85rem] px-4 md:px-8 flex items-center justify-between h-full">
+            <div class="flex items-center gap-3 md:gap-4">
+                <!-- 奇美教學部 Logo -->
+                <img src="https://raw.githubusercontent.com/Luyun1224/DiscussionRoomRegistrationSystem/main/%E6%95%99%E5%AD%B8%E9%83%A8-LOGO(%E9%BB%91%E8%89%B2).png" alt="奇美醫院教學部" class="h-8 md:h-10 object-contain drop-shadow-sm">
+                
+                <div class="h-5 w-px bg-slate-300 mx-1 hidden sm:block"></div>
+                
+                <!-- 系統名稱 -->
+                <h1 class="text-base md:text-lg font-bold text-slate-800 tracking-wider hidden sm:block">
+                    奇美醫院教學部討論室預約系統 <span class="text-xs text-white bg-[#007AC1] px-2 py-0.5 rounded-full ml-2 align-middle font-normal shadow-sm">線上版</span>
+                </h1>
+            </div>
+            
+            <!-- 系統時間小工具 -->
+            <div class="flex items-center gap-2 text-sm font-semibold text-slate-600 bg-slate-100/80 px-3 py-1.5 rounded-lg border border-slate-200/50">
+                <svg class="w-4 h-4 text-[#007AC1]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span id="system-clock" class="tracking-wider w-[68px] text-center">00:00:00</span>
+            </div>
         </div>
+    </nav>
 
-        <div class="bg-white rounded-2xl shadow-xl overflow-x-auto mb-8">
-            <div id="schedule-container" class="min-w-[1200px] p-4 md:p-6 relative">
-                <!-- Schedule grid will be generated here by JS --></div>
-        </div>
+    <!-- 歡迎橫幅 Sub-Header (全寬設計，與 Navbar 無縫連接) -->
+    <div class="bg-[#002D62] relative overflow-hidden mt-16 pt-10 pb-20 z-0 shadow-inner">
+        <!-- 裝飾性幾何圖形 -->
+        <div class="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-[#007AC1] opacity-30 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute bottom-0 left-10 -mb-10 w-48 h-48 bg-[#EF3B24] opacity-20 rounded-full blur-3xl pointer-events-none"></div>
+        
+        <div class="max-w-[85rem] mx-auto px-4 md:px-8 flex flex-col md:flex-row items-center justify-between relative z-10">
+            <div class="text-center md:text-left">
+                <h2 class="text-2xl md:text-3xl font-bold text-white mb-2 tracking-wide drop-shadow-md">歡迎使用空間預約服務</h2>
+                <p class="text-blue-100 text-base md:text-lg font-medium drop-shadow">即時查看與預約，讓會議安排更輕鬆有效率。</p>
+            </div>
 
-        <!-- Calendar Section --><div id="calendar-wrapper" class="bg-white rounded-2xl shadow-xl p-4 md:p-6">
-            <div>
-                <div id="calendar-header" class="flex justify-between items-center mb-4">
-                    <button id="prev-month-btn" class="p-2 rounded-full hover:bg-gray-100">&lt;</button>
-                    <h2 id="calendar-month-year" class="text-xl font-bold"></h2>
-                    <button id="next-month-btn" class="p-2 rounded-full hover:bg-gray-100">&gt;</button>
+            <!-- 控制列 -->
+            <div class="mt-6 md:mt-0 flex flex-col sm:flex-row items-center bg-white/10 backdrop-blur-md p-3 md:p-4 rounded-xl border border-white/20 gap-3 shadow-inner">
+                <div class="flex items-center gap-3">
+                    <label for="date-picker" class="font-bold text-white drop-shadow-sm whitespace-nowrap">快速跳轉：</label>
+                    <input type="date" id="date-picker" class="border border-white/30 bg-white/90 rounded-lg p-2 focus:ring-2 focus:ring-[#007AC1] focus:border-[#007AC1] text-slate-800 cursor-pointer transition-colors outline-none shadow-sm font-medium">
                 </div>
-                <div class="grid grid-cols-7 text-center font-semibold text-gray-500 mb-2">
-                    <div class="text-red-700">日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div class="text-red-700">六</div>
-                </div>
-                <div id="calendar-grid" class="calendar-grid">
-                    <!-- Calendar days will be generated here by JS --></div>
+                <button id="btn-today" class="w-full sm:w-auto px-5 py-2 bg-white/20 hover:bg-white/30 text-white font-bold rounded-lg transition-all border border-white/30 shadow-sm hover:shadow">
+                    回到今日
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- Modals (same as before) --><div id="booking-modal" class="fixed inset-0 z-50 bg-black bg-opacity-50 flex justify-center items-center p-4 modal-backdrop opacity-0 pointer-events-none">
-        <div class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-lg transform scale-95 transition-transform duration-300">
-            <h3 class="text-2xl font-bold mb-4 text-gray-800">預約時段</h3>
-            <div class="bg-amber-50 p-4 rounded-lg mb-6">
-                <div class="flex justify-between items-center text-center">
-                    <div><p class="text-sm text-gray-500">房間</p><p id="modal-room-name" class="font-bold text-lg text-amber-600"></p></div>
-                    <div><p class="text-sm text-gray-500">日期</p><p id="modal-date" class="font-semibold text-lg"></p></div>
-                    <div><p class="text-sm text-gray-500">從</p><p id="modal-start-time" class="font-semibold text-lg"></p></div>
-                    <div><p class="text-sm text-gray-500">到</p><select id="end-time-select" class="font-semibold text-lg bg-transparent border-none focus:ring-0 p-0 pr-7"></select></div>
+    <!-- 主要內容區 (使用負 Margin 向上重疊，營造層次感) -->
+    <div class="max-w-[85rem] mx-auto px-4 md:px-8 pb-12 space-y-6 md:space-y-8 relative z-10 -mt-10">
+        
+        <!-- 日時間表區塊 (Premium Card) -->
+        <div class="premium-card overflow-hidden">
+            <div class="border-b border-slate-100 p-5 bg-white/50 backdrop-blur-md flex items-center justify-between">
+                <h2 class="text-xl font-bold text-slate-800 flex items-center">
+                    <div class="p-1.5 bg-blue-50 rounded-lg mr-3 border border-blue-100">
+                        <svg class="w-6 h-6 text-[#007AC1]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                    </div>
+                    當日預約狀況 <span id="schedule-date-display" class="ml-3 text-sm font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-md"></span>
+                </h2>
+                <div class="hidden sm:flex gap-4 text-sm font-medium text-slate-500">
+                    <div class="flex items-center"><span class="w-3 h-3 rounded-full bg-[#002D62] mr-2"></span>討論室</div>
+                    <div class="flex items-center"><span class="w-3 h-3 rounded-full bg-[#007AC1] mr-2"></span>多功能室</div>
                 </div>
             </div>
-            <div class="space-y-4">
-                <div><label for="booker-name" class="block text-sm font-medium text-gray-700 mb-1">借用者姓名:</label><input type="text" id="booker-name" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-amber-500 focus:border-amber-500 input-field" placeholder="例如：王大明"></div>
-                <div><label for="booker-contact" class="block text-sm font-medium text-gray-700 mb-1">聯絡方式:</label><input type="text" id="booker-contact" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-amber-500 focus:border-amber-500 input-field" placeholder="分機或手機號碼"></div>
-                <div><label for="booking-purpose" class="block text-sm font-medium text-gray-700 mb-1">預定用途:</label><textarea id="booking-purpose" rows="3" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-amber-500 focus:border-amber-500 input-field" placeholder="例如：專案會議、部門訓練"></textarea></div>
+            <div class="overflow-x-auto custom-scrollbar bg-white/30">
+                <div id="schedule-container" class="min-w-[1000px] p-6 relative">
+                    <!-- 時間表將由 JS 動態生成 -->
+                </div>
             </div>
-            <div class="mt-8 flex justify-end space-x-4">
-                <button class="close-modal-btn px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors">關閉</button>
-                <button id="confirm-booking-btn" class="px-6 py-2 btn-primary rounded-lg font-semibold">確認預約</button>
+        </div>
+
+        <!-- 月曆區塊 (Premium Card) -->
+        <div id="calendar-wrapper" class="premium-card p-6">
+            <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+                <h2 class="text-xl font-bold text-slate-800 flex items-center">
+                    <div class="p-1.5 bg-blue-50 rounded-lg mr-3 border border-blue-100">
+                        <svg class="w-6 h-6 text-[#007AC1]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    </div>
+                    月曆總覽
+                </h2>
+                <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 p-1 rounded-xl shadow-sm">
+                    <button id="prev-month-btn" class="p-2 rounded-lg hover:bg-white hover:shadow-sm text-slate-600 transition-all" title="上個月">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    </button>
+                    <h2 id="calendar-month-year" class="text-lg font-bold text-slate-800 min-w-[130px] text-center tracking-wide"></h2>
+                    <button id="next-month-btn" class="p-2 rounded-lg hover:bg-white hover:shadow-sm text-slate-600 transition-all" title="下個月">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-7 text-center font-bold text-slate-500 mb-3 text-sm">
+                <div class="text-red-500">週日</div><div>週一</div><div>週二</div><div>週三</div><div>週四</div><div>週五</div><div class="text-red-500">週六</div>
+            </div>
+            <div id="calendar-grid" class="calendar-grid">
+                <!-- 日曆網格將由 JS 動態生成 -->
             </div>
         </div>
     </div>
-    <div id="edit-modal" class="fixed inset-0 z-50 bg-black bg-opacity-50 flex justify-center items-center p-4 modal-backdrop opacity-0 pointer-events-none">
-        <div class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-lg transform scale-95 transition-transform duration-300">
-            <h3 class="text-2xl font-bold mb-4 text-gray-800">編輯預約</h3>
-            <div class="bg-blue-50 p-4 rounded-lg mb-6">
-                <div class="flex justify-between items-center text-center">
-                    <div><p class="text-sm text-gray-500">房間</p><p id="edit-modal-room-name" class="font-bold text-lg text-blue-600"></p></div>
-                    <div><p class="text-sm text-gray-500">日期</p><p id="edit-modal-date" class="font-semibold text-lg"></p></div>
-                    <div><p class="text-sm text-gray-500">從</p><p id="edit-modal-start-time" class="font-semibold text-lg"></p></div>
-                    <div><p class="text-sm text-gray-500">到</p><select id="edit-end-time-select" class="font-semibold text-lg bg-transparent border-none focus:ring-0 p-0 pr-7"></select></div>
+
+    <!-- 模態框 (預約) -->
+    <div id="booking-modal" class="fixed inset-0 z-50 flex justify-center items-center p-4 modal-backdrop modal-hidden pointer-events-none bg-slate-900/40">
+        <div class="modal-content bg-white rounded-2xl shadow-2xl p-6 md:p-8 w-full max-w-lg relative pointer-events-auto border-t-4 border-[#007AC1]">
+            <button class="close-modal-btn absolute top-4 right-4 text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-full p-2 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            
+            <h3 class="text-2xl font-bold mb-6 text-slate-800 flex items-center border-b pb-4">
+                <span class="w-2 h-6 bg-[#007AC1] rounded-full mr-3"></span>
+                新增預約
+            </h3>
+            
+            <div class="bg-[#f0f7fb] border border-[#b3def6] p-4 rounded-xl mb-6 flex flex-wrap gap-4 justify-between text-center items-center shadow-inner">
+                <div class="flex-1 min-w-[80px]"><p class="text-xs text-slate-500 mb-1 font-medium">場地</p><p id="modal-room-name" class="font-bold text-lg text-[#002D62]"></p></div>
+                <div class="w-px h-10 bg-[#b3def6] hidden sm:block"></div>
+                <div class="flex-1 min-w-[80px]"><p class="text-xs text-slate-500 mb-1 font-medium">日期</p><p id="modal-date" class="font-semibold text-slate-800"></p></div>
+                <div class="w-px h-10 bg-[#b3def6] hidden sm:block"></div>
+                <div class="flex-1 min-w-[120px] flex items-center justify-center gap-2">
+                    <div>
+                        <p class="text-xs text-slate-500 mb-1 font-medium">從</p>
+                        <p id="modal-start-time" class="font-bold text-[#007AC1] bg-white px-2 py-1 rounded border border-blue-100 shadow-sm"></p>
+                    </div>
+                    <span class="text-slate-400 mt-4">-</span>
+                    <div>
+                        <p class="text-xs text-slate-500 mb-1 font-medium">到</p>
+                        <select id="end-time-select" class="font-bold text-[#007AC1] bg-white border border-blue-200 rounded shadow-sm focus:ring-2 focus:ring-[#007AC1] px-2 py-1 cursor-pointer outline-none"></select>
+                    </div>
                 </div>
             </div>
-            <div class="space-y-4">
-                <div><label for="edit-booker-name" class="block text-sm font-medium text-gray-700 mb-1">借用者姓名:</label><input type="text" id="edit-booker-name" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 input-field"></div>
-                <div><label for="edit-booker-contact" class="block text-sm font-medium text-gray-700 mb-1">聯絡方式:</label><input type="text" id="edit-booker-contact" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 input-field"></div>
-                <div><label for="edit-booking-purpose" class="block text-sm font-medium text-gray-700 mb-1">預定用途:</label><textarea id="edit-booking-purpose" rows="3" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 input-field"></textarea></div>
+            
+            <div class="space-y-5">
+                <div>
+                    <label for="booker-name" class="block text-sm font-bold text-slate-700 mb-1">借用者姓名 <span class="text-red-500">*</span></label>
+                    <input type="text" id="booker-name" class="input-field" placeholder="請輸入單位與姓名 (例：教學部 王大明)">
+                </div>
+                <div>
+                    <label for="booker-contact" class="block text-sm font-bold text-slate-700 mb-1">聯絡方式 <span class="text-red-500">*</span></label>
+                    <input type="text" id="booker-contact" class="input-field" placeholder="請輸入分機或手機號碼">
+                </div>
+                <div>
+                    <label for="booking-purpose" class="block text-sm font-bold text-slate-700 mb-1">預定用途 <span class="text-red-500">*</span></label>
+                    <textarea id="booking-purpose" rows="3" class="input-field resize-none" placeholder="請簡述會議或活動內容"></textarea>
+                </div>
             </div>
-            <div class="mt-8 flex justify-between items-center">
-                 <button id="trigger-cancel-btn" class="px-6 py-2 btn-danger rounded-lg font-semibold">取消此預約</button>
-                 <div class="space-x-4">
-                    <button class="close-modal-btn px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors">關閉</button>
-                    <button id="confirm-edit-btn" class="px-6 py-2 btn-primary rounded-lg font-semibold">儲存變更</button>
+            
+            <div class="mt-8 flex justify-end gap-3">
+                <button class="close-modal-btn px-6 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-colors border border-slate-200">取消</button>
+                <button id="confirm-booking-btn" class="px-6 py-2.5 btn-primary rounded-lg font-bold flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    確認預約
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模態框 (編輯) -->
+    <div id="edit-modal" class="fixed inset-0 z-50 flex justify-center items-center p-4 modal-backdrop modal-hidden pointer-events-none bg-slate-900/40">
+        <div class="modal-content bg-white rounded-2xl shadow-2xl p-6 md:p-8 w-full max-w-lg relative pointer-events-auto border-t-4 border-amber-500">
+            <button class="close-modal-btn absolute top-4 right-4 text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-full p-2 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            
+            <h3 class="text-2xl font-bold mb-6 text-slate-800 flex items-center border-b pb-4">
+                <span class="w-2 h-6 bg-amber-500 rounded-full mr-3"></span>
+                檢視 / 編輯預約
+            </h3>
+            
+            <div class="bg-amber-50 border border-amber-200 p-4 rounded-xl mb-6 flex flex-wrap gap-4 justify-between text-center items-center shadow-inner">
+                <div class="flex-1 min-w-[80px]"><p class="text-xs text-slate-500 mb-1 font-medium">場地</p><p id="edit-modal-room-name" class="font-bold text-lg text-amber-700"></p></div>
+                <div class="w-px h-10 bg-amber-200 hidden sm:block"></div>
+                <div class="flex-1 min-w-[80px]"><p class="text-xs text-slate-500 mb-1 font-medium">日期</p><p id="edit-modal-date" class="font-semibold text-slate-800"></p></div>
+                <div class="w-px h-10 bg-amber-200 hidden sm:block"></div>
+                <div class="flex-1 min-w-[120px] flex items-center justify-center gap-2">
+                    <div>
+                        <p class="text-xs text-slate-500 mb-1 font-medium">從</p>
+                        <p id="edit-modal-start-time" class="font-bold text-amber-600 bg-white px-2 py-1 rounded border border-amber-100 shadow-sm"></p>
+                    </div>
+                    <span class="text-slate-400 mt-4">-</span>
+                    <div>
+                        <p class="text-xs text-slate-500 mb-1 font-medium">到</p>
+                        <select id="edit-end-time-select" class="font-bold text-amber-600 bg-white border border-amber-200 rounded shadow-sm focus:ring-2 focus:ring-amber-500 px-2 py-1 cursor-pointer outline-none"></select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="space-y-5">
+                <div>
+                    <label for="edit-booker-name" class="block text-sm font-bold text-slate-700 mb-1">借用者姓名</label>
+                    <input type="text" id="edit-booker-name" class="input-field">
+                </div>
+                <div>
+                    <label for="edit-booker-contact" class="block text-sm font-bold text-slate-700 mb-1">聯絡方式</label>
+                    <input type="text" id="edit-booker-contact" class="input-field">
+                </div>
+                <div>
+                    <label for="edit-booking-purpose" class="block text-sm font-bold text-slate-700 mb-1">預定用途</label>
+                    <textarea id="edit-booking-purpose" rows="3" class="input-field resize-none"></textarea>
+                </div>
+            </div>
+            
+            <div class="mt-8 flex flex-col-reverse sm:flex-row justify-between items-center gap-4 pt-4 border-t border-slate-100">
+                 <button id="trigger-cancel-btn" class="w-full sm:w-auto px-4 py-2.5 text-red-600 hover:text-red-700 hover:bg-red-50 font-bold rounded-lg transition-colors border border-transparent hover:border-red-200 flex items-center justify-center">
+                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    取消此預約
+                 </button>
+                 <div class="w-full sm:w-auto flex gap-3">
+                    <button class="close-modal-btn flex-1 px-6 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-colors border border-slate-200">關閉</button>
+                    <button id="confirm-edit-btn" class="flex-1 px-6 py-2.5 btn-primary rounded-lg font-bold flex items-center justify-center">
+                        儲存變更
+                    </button>
                  </div>
             </div>
         </div>
     </div>
-    <div id="alert-modal" class="fixed inset-0 z-[60] bg-black bg-opacity-50 flex justify-center items-center p-4 modal-backdrop opacity-0 pointer-events-none">
-        <div class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-sm text-center">
-            <p id="alert-message" class="text-lg mb-6"></p>
-            <div id="alert-buttons" class="flex justify-center space-x-4"></div>
+
+    <!-- 模態框 (系統訊息/確認框) -->
+    <div id="alert-modal" class="fixed inset-0 z-[110] flex justify-center items-center p-4 modal-backdrop modal-hidden pointer-events-none bg-slate-900/50">
+        <div class="modal-content bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm text-center relative pointer-events-auto">
+            <div id="alert-icon-container" class="mx-auto w-16 h-16 mb-4 flex items-center justify-center rounded-full bg-blue-100 text-blue-600">
+                <!-- Icon will be injected here -->
+            </div>
+            <h4 id="alert-title" class="text-xl font-bold text-slate-800 mb-2">系統訊息</h4>
+            <p id="alert-message" class="text-slate-600 mb-8 font-medium"></p>
+            <div id="alert-buttons" class="flex justify-center gap-3">
+                <!-- Buttons will be injected here -->
+            </div>
         </div>
     </div>
 
     <script type="module">
+        // 系統時鐘更新邏輯
+        function updateClock() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            document.getElementById('system-clock').textContent = timeString;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
         // --- 設定區 ---
         const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbx19UdR3V26vH3kSp7OUPaTnWmEw0bRA2jhzXZ7bY-Fi5khPakQqN8qncOIpGeDry2tBA/exec'; 
         const HOLIDAY_API_URL = 'https://cdn.jsdelivr.net/gh/ruyut/TaiwanCalendar/data/{year}.json';
-        // --- 設定區結束 ---
+        
+        // 房間設定 (使用 OKC 配色：深海軍藍 / 雷霆藍)
+        const rooms = [
+            { id: 1, name: '討論室', colorClass: 'bg-[#002D62]', textClass: 'text-[#002D62]' }, 
+            { id: 2, name: '多功能室', colorClass: 'bg-[#007AC1]', textClass: 'text-[#007AC1]' }, 
+        ];
 
+        // --- 狀態變數 ---
         let currentDailyBookings = []; 
         let currentMonthBookings = []; 
         let calendarDate = new Date(); 
         let holidays = {};
         let tippyInstances = [];
-        
-        // 調整房間顏色以符合新的配色風格
-        const rooms = [
-            { id: 1, name: '討論室', color: 'bg-blue-900' }, // 深藍色
-            { id: 2, name: '多功能室', color: 'bg-amber-500' }, // 琥珀色/橘色
-        ];
-        
-        // DOM Elements
-        const datePicker = document.getElementById('date-picker');
-        const scheduleContainer = document.getElementById('schedule-container');
-        const loader = document.getElementById('loader');
-        const bookingModal = document.getElementById('booking-modal');
-        const editModal = document.getElementById('edit-modal');
-        const alertModal = document.getElementById('alert-modal');
-        const calendarGrid = document.getElementById('calendar-grid');
-        const calendarMonthYear = document.getElementById('calendar-month-year');
-        const prevMonthBtn = document.getElementById('prev-month-btn');
-        const nextMonthBtn = document.getElementById('next-month-btn');
 
-        const showLoader = () => { loader.classList.remove('opacity-0', 'pointer-events-none'); };
-        const hideLoader = () => { loader.classList.add('opacity-0', 'pointer-events-none'); };
-        
+        // --- DOM 元素 ---
+        const els = {
+            datePicker: document.getElementById('date-picker'),
+            btnToday: document.getElementById('btn-today'),
+            scheduleContainer: document.getElementById('schedule-container'),
+            scheduleDateDisplay: document.getElementById('schedule-date-display'),
+            loader: document.getElementById('loader'),
+            modals: {
+                booking: document.getElementById('booking-modal'),
+                edit: document.getElementById('edit-modal'),
+                alert: document.getElementById('alert-modal')
+            },
+            calendar: {
+                grid: document.getElementById('calendar-grid'),
+                monthYear: document.getElementById('calendar-month-year'),
+                prevBtn: document.getElementById('prev-month-btn'),
+                nextBtn: document.getElementById('next-month-btn')
+            }
+        };
+
+        // --- 輔助函數 ---
+        const loaderCtrl = {
+            show: () => els.loader.classList.remove('opacity-0', 'pointer-events-none'),
+            hide: () => els.loader.classList.add('opacity-0', 'pointer-events-none')
+        };
+
         const generateTimeSlots = (interval = 30) => {
             const slots = [];
             for (let hour = 8; hour < 18; hour++) {
@@ -216,77 +568,116 @@
                     slots.push(`${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`);
                 }
             }
-            slots.push('18:00');
+            slots.push('18:00'); 
             return slots;
         };
         const timeSlots = generateTimeSlots();
-
-        const customAlert = (message) => {
-            return new Promise(resolve => {
-                const alertMessage = document.getElementById('alert-message');
-                const alertButtons = document.getElementById('alert-buttons');
-                alertMessage.textContent = message;
-                alertButtons.innerHTML = `<button id="alert-ok" class="px-6 py-2 btn-primary rounded-lg">確認</button>`;
-                alertModal.classList.remove('opacity-0', 'pointer-events-none');
-                document.getElementById('alert-ok').onclick = () => {
-                    alertModal.classList.add('opacity-0', 'pointer-events-none');
-                    resolve();
-                };
-            });
-        };
-
-        const customConfirm = (message) => {
-            return new Promise(resolve => {
-                const alertMessage = document.getElementById('alert-message');
-                const alertButtons = document.getElementById('alert-buttons');
-                alertMessage.textContent = message;
-                alertButtons.innerHTML = `<button id="confirm-cancel" class="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg">取消</button><button id="confirm-ok" class="px-6 py-2 btn-danger rounded-lg">確定</button>`;
-                alertModal.classList.remove('opacity-0', 'pointer-events-none');
-                document.getElementById('confirm-ok').onclick = () => {
-                    alertModal.classList.add('opacity-0', 'pointer-events-none');
-                    resolve(true);
-                };
-                document.getElementById('confirm-cancel').onclick = () => {
-                    alertModal.classList.add('opacity-0', 'pointer-events-none');
-                    resolve(false);
-                };
-            });
-        };
 
         const timeToMinutes = (time) => {
             if (typeof time !== 'string' || !time.includes(':')) return 0;
             const [hours, minutes] = time.split(':').map(Number);
             return hours * 60 + minutes;
-        }
-        
+        };
+
         const formatDate = (date) => {
             const d = new Date(date);
-            // Use local timezone to prevent off-by-one day errors
             const year = d.getFullYear();
             const month = String(d.getMonth() + 1).padStart(2, '0');
             const day = String(d.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
         };
 
+        const svgIcons = {
+            info: `<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
+            warning: `<svg class="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`,
+            success: `<svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`
+        };
+
+        const openModal = (modalEl) => {
+            modalEl.classList.remove('modal-hidden', 'pointer-events-none');
+            modalEl.classList.add('modal-visible');
+        };
+
+        const closeModal = (modalEl) => {
+            modalEl.classList.remove('modal-visible');
+            modalEl.classList.add('modal-hidden', 'pointer-events-none');
+        };
+
+        const customAlert = (message, type = 'info', title = '系統訊息') => {
+            return new Promise(resolve => {
+                const titleEl = document.getElementById('alert-title');
+                const messageEl = document.getElementById('alert-message');
+                const btnsEl = document.getElementById('alert-buttons');
+                const iconEl = document.getElementById('alert-icon-container');
+
+                titleEl.textContent = title;
+                messageEl.innerHTML = message;
+                iconEl.innerHTML = svgIcons[type] || svgIcons.info;
+                
+                iconEl.className = `mx-auto w-16 h-16 mb-4 flex items-center justify-center rounded-full ${type === 'success' ? 'bg-green-100' : type === 'warning' ? 'bg-amber-100' : 'bg-blue-100'}`;
+
+                btnsEl.innerHTML = `<button id="alert-ok" class="px-8 py-2.5 btn-primary rounded-lg font-bold w-full">確定</button>`;
+                openModal(els.modals.alert);
+                
+                document.getElementById('alert-ok').onclick = () => {
+                    closeModal(els.modals.alert);
+                    setTimeout(resolve, 300); 
+                };
+            });
+        };
+
+        const customConfirm = (message, title = '確認操作') => {
+            return new Promise(resolve => {
+                const titleEl = document.getElementById('alert-title');
+                const messageEl = document.getElementById('alert-message');
+                const btnsEl = document.getElementById('alert-buttons');
+                const iconEl = document.getElementById('alert-icon-container');
+
+                titleEl.textContent = title;
+                messageEl.innerHTML = message; 
+                iconEl.innerHTML = svgIcons.warning;
+                iconEl.className = 'mx-auto w-16 h-16 mb-4 flex items-center justify-center rounded-full bg-amber-100';
+
+                btnsEl.innerHTML = `
+                    <button id="confirm-cancel" class="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-colors">取消</button>
+                    <button id="confirm-ok" class="flex-1 px-4 py-2.5 btn-danger rounded-lg font-bold">確定執行</button>
+                `;
+                openModal(els.modals.alert);
+                
+                document.getElementById('confirm-ok').onclick = () => {
+                    closeModal(els.modals.alert);
+                    setTimeout(() => resolve(true), 300);
+                };
+                document.getElementById('confirm-cancel').onclick = () => {
+                    closeModal(els.modals.alert);
+                    setTimeout(() => resolve(false), 300);
+                };
+            });
+        };
+
         const renderSchedule = (bookings) => {
             currentDailyBookings = Array.isArray(bookings) ? bookings : [];
-            scheduleContainer.innerHTML = ''; 
+            els.scheduleContainer.innerHTML = ''; 
+
+            const totalSlots = timeSlots.length - 1; 
 
             const grid = document.createElement('div');
             grid.style.display = 'grid';
-            grid.style.gridTemplateColumns = '100px repeat(20, minmax(0, 1fr))';
-            grid.style.gridTemplateRows = `48px repeat(${rooms.length}, 80px)`;
+            grid.style.gridTemplateColumns = `120px repeat(${totalSlots}, minmax(40px, 1fr))`;
+            grid.style.gridTemplateRows = `auto repeat(${rooms.length}, 80px)`;
+            grid.className = "w-full border-l border-t border-slate-200 bg-white/80 backdrop-blur-sm rounded-lg shadow-sm";
 
-            const headerVenue = document.createElement('div');
-            headerVenue.className = "sticky top-0 bg-white z-10 p-2 border-b border-r font-semibold text-gray-600 flex items-center justify-center";
-            headerVenue.style.gridRow = '1';
-            headerVenue.style.gridColumn = '1';
-            headerVenue.textContent = '場地';
-            grid.appendChild(headerVenue);
+            const headerCorner = document.createElement('div');
+            headerCorner.className = "sticky left-0 top-0 bg-slate-50/90 backdrop-blur-sm z-20 p-3 border-b border-r border-slate-200 font-bold text-slate-600 flex items-center justify-center shadow-[1px_0_0_0_#e2e8f0]";
+            headerCorner.style.gridRow = '1';
+            headerCorner.style.gridColumn = '1';
+            headerCorner.textContent = '場地 \\ 時間';
+            grid.appendChild(headerCorner);
 
             timeSlots.slice(0, -1).forEach((slot, index) => {
+                const isHour = slot.endsWith(':00');
                 const headerSlot = document.createElement('div');
-                headerSlot.className = "sticky top-0 bg-white z-10 p-2 border-b text-center text-sm text-gray-500 flex items-center justify-center";
+                headerSlot.className = `p-2 border-b border-r border-slate-200 text-center text-sm flex items-center justify-center ${isHour ? 'font-bold text-slate-700 bg-slate-50/50' : 'text-slate-400'}`;
                 headerSlot.style.gridRow = '1';
                 headerSlot.style.gridColumn = `${index + 2}`;
                 headerSlot.textContent = slot;
@@ -295,79 +686,120 @@
 
             rooms.forEach((room, roomIndex) => {
                 const roomLabel = document.createElement('div');
-                roomLabel.className = `p-2 border-r flex items-center justify-center font-bold text-lg ${room.color.replace('bg-', 'text-')}`;
+                roomLabel.className = `sticky left-0 p-3 border-b border-r border-slate-200 flex flex-col items-center justify-center font-bold bg-white/95 backdrop-blur-sm z-10 shadow-[1px_0_0_0_#e2e8f0] ${room.textClass}`;
                 roomLabel.style.gridRow = `${roomIndex + 2}`;
                 roomLabel.style.gridColumn = '1';
-                roomLabel.textContent = room.name;
+                roomLabel.innerHTML = `
+                    <span class="w-2 h-2 rounded-full ${room.colorClass} mb-1"></span>
+                    <span>${room.name}</span>
+                `;
                 grid.appendChild(roomLabel);
 
                 timeSlots.slice(0, -1).forEach((slot, slotIndex) => {
+                    const isHour = slot.endsWith(':00');
                     const cell = document.createElement('div');
-                    cell.className = "time-slot-cell border-b border-r available cursor-pointer";
+                    cell.className = `time-slot-cell border-b border-r border-slate-100 available cursor-pointer ${isHour ? 'border-l-slate-200' : ''}`;
                     cell.dataset.roomName = room.name;
                     cell.dataset.timeSlot = slot;
                     cell.style.gridRow = `${roomIndex + 2}`;
                     cell.style.gridColumn = `${slotIndex + 2}`;
+                    cell.title = `點擊預約 ${room.name} ${slot}`;
                     grid.appendChild(cell);
                 });
             });
 
-            scheduleContainer.appendChild(grid);
+            els.scheduleContainer.appendChild(grid);
             
             if (currentDailyBookings.length === 0) {
-                const noBookingsMessage = document.createElement('div');
-                noBookingsMessage.textContent = '本日尚無預約';
-                noBookingsMessage.className = 'absolute inset-0 flex items-center justify-center text-gray-400 text-lg pointer-events-none';
-                noBookingsMessage.style.top = '48px'; 
-                scheduleContainer.appendChild(noBookingsMessage);
+                const emptyState = document.createElement('div');
+                emptyState.className = 'absolute inset-0 flex flex-col items-center justify-center text-slate-400 pointer-events-none z-30 pt-10';
+                emptyState.innerHTML = `
+                    <svg class="w-12 h-12 mb-2 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    <p class="text-lg font-bold text-slate-500 tracking-wide">本日尚無預約</p>
+                    <p class="text-sm mt-1">點擊上方空白格即可開始預約</p>
+                `;
+                els.scheduleContainer.appendChild(emptyState);
             }
 
+            const gridStartMinutes = timeToMinutes('08:00');
+            const gridEndMinutes = timeToMinutes('18:00');
+
             currentDailyBookings.forEach(booking => {
-                const { '場地名稱': roomName, '開始時間': startTime, '結束時間': endTime, '預約ID': bookingId, '借用者': booker, '預訂用途': purpose, '聯絡方式': contact } = booking;
+                const { '場地名稱': roomName, '開始時間': startTime, '結束時間': endTime, '預約ID': bookingId, '借用者': booker, '預訂用途': purpose } = booking;
+                
                 if (!startTime || !endTime || startTime === 'N/A' || endTime === 'N/A') return; 
+                
                 const roomIndex = rooms.findIndex(r => r.name === roomName);
                 if (roomIndex === -1) return;
+
                 const startMinutes = timeToMinutes(startTime);
                 const endMinutes = timeToMinutes(endTime);
-                const gridStartMinutes = timeToMinutes('08:00');
-                if (startMinutes < gridStartMinutes || endMinutes > timeToMinutes('18:00')) return;
+                
+                if (startMinutes < gridStartMinutes || endMinutes > gridEndMinutes || startMinutes >= endMinutes) return;
+
                 const offsetMinutes = startMinutes - gridStartMinutes;
                 const durationMinutes = endMinutes - startMinutes;
+                
                 const startSlotIndex = Math.floor(offsetMinutes / 30);
                 const durationSlots = Math.ceil(durationMinutes / 30);
+                
                 if (durationSlots <= 0) return;
-                const gridRowStart = roomIndex + 2;
-                const gridColumnStart = startSlotIndex + 2;
-                const roomColor = rooms[roomIndex].color;
+
+                const roomConfig = rooms[roomIndex];
                 const bookingEl = document.createElement('div');
-                bookingEl.className = `${roomColor} booked-slot rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer p-1`;
-                bookingEl.style.gridRow = `${gridRowStart}`;
-                bookingEl.style.gridColumn = `${gridColumnStart} / span ${durationSlots}`;
+                bookingEl.className = `${roomConfig.colorClass} booked-slot rounded-md cursor-pointer border border-white/20`;
+                
+                bookingEl.style.gridRow = `${roomIndex + 2}`;
+                bookingEl.style.gridColumn = `${startSlotIndex + 2} / span ${durationSlots}`;
+                
                 bookingEl.style.zIndex = '20';
-                bookingEl.style.margin = '4px';
+                bookingEl.style.margin = '4px 2px';
                 bookingEl.style.height = 'calc(100% - 8px)';
                 bookingEl.dataset.bookingId = bookingId;
-                const title = `預約者: ${booker}\n用途: ${purpose}\n聯絡方式: ${contact}`;
-                const displayText = `${booker}<br><span class="text-xs opacity-80">${purpose}</span>`;
-                bookingEl.innerHTML = `<div class="text-center w-full h-full flex flex-col justify-center items-center" title="${title}">${displayText}</div>`;
+                
+                bookingEl.innerHTML = `
+                    <div class="booked-slot-inner w-full h-full flex flex-col justify-center items-center px-1">
+                        <span class="font-bold truncate w-full text-center tracking-wide">${booker}</span>
+                        ${durationSlots > 1 ? `<span class="text-xs opacity-90 truncate w-full text-center font-light">${purpose}</span>` : ''}
+                    </div>
+                `;
+                
+                tippy(bookingEl, {
+                    content: `
+                        <div class="text-left">
+                            <div class="font-bold border-b border-slate-200 pb-1 mb-1 text-[#007AC1]">${roomName}</div>
+                            <div class="text-sm font-medium">時間：${startTime} - ${endTime}</div>
+                            <div class="text-sm font-medium">借用人：${booker}</div>
+                            <div class="text-sm mt-1 pt-1 border-t border-slate-100 text-slate-500">用途：${purpose}</div>
+                            <div class="text-xs text-slate-400 mt-2 text-center">(點擊可編輯或取消)</div>
+                        </div>
+                    `,
+                    allowHTML: true,
+                    theme: 'chimei',
+                    placement: 'top',
+                    animation: 'shift-away'
+                });
+
                 grid.appendChild(bookingEl);
             });
         };
 
         const renderScheduleFromMonthData = (dateString) => {
             const dailyData = currentMonthBookings.filter(b => b['預約日期'] === dateString);
+            els.scheduleDateDisplay.textContent = dateString; // 更新標題上的日期顯示
             renderSchedule(dailyData);
         }
 
         const renderCalendar = (date, monthBookings) => {
             tippyInstances.forEach(instance => instance.destroy());
             tippyInstances = [];
+            
             currentMonthBookings = Array.isArray(monthBookings) ? monthBookings : [];
-            calendarGrid.innerHTML = '';
-            calendarMonthYear.textContent = `${date.getFullYear()} 年 ${date.getMonth() + 1} 月`;
+            els.calendar.grid.innerHTML = '';
+            els.calendar.monthYear.textContent = `${date.getFullYear()} 年 ${date.getMonth() + 1} 月`;
             
             const todayStr = formatDate(new Date());
-            const selectedDateStr = datePicker.value;
+            const selectedDateStr = els.datePicker.value;
 
             const year = date.getFullYear();
             const month = date.getMonth();
@@ -379,45 +811,53 @@
             for (let i = 0; i < startDayOfWeek; i++) {
                 const emptyCell = document.createElement('div');
                 emptyCell.className = "calendar-day other-month";
-                calendarGrid.appendChild(emptyCell);
+                els.calendar.grid.appendChild(emptyCell);
             }
             
             for (let day = 1; day <= daysInMonth; day++) {
                 const dayCell = document.createElement('div');
                 dayCell.className = "calendar-day";
+                
                 const thisDate = new Date(year, month, day);
                 const thisDateStr = formatDate(thisDate);
                 const dayOfWeek = thisDate.getDay();
+                
                 dayCell.dataset.date = thisDateStr;
 
+                const topRow = document.createElement('div');
+                topRow.className = "flex justify-between items-start mb-1";
+                
                 const dayNumber = document.createElement('span');
-                dayNumber.className = 'day-number';
+                dayNumber.className = 'day-number font-bold';
                 dayNumber.textContent = day;
-                dayCell.appendChild(dayNumber);
+                topRow.appendChild(dayNumber);
+                dayCell.appendChild(topRow);
 
                 const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-                const holidayInfo = holidays[thisDateStr.replace(/-/g, '')];
+                const holidayKey = thisDateStr.replace(/-/g, '');
+                const holidayInfo = holidays[holidayKey];
 
                 if (thisDateStr === todayStr) dayCell.classList.add('is-today');
                 if (thisDateStr === selectedDateStr) dayCell.classList.add('is-selected');
                 if (isWeekend || holidayInfo) dayCell.classList.add('is-weekend');
 
-                
-                const bookingsForDay = currentMonthBookings.filter(b => b['預約日期'] === thisDateStr).sort((a,b) => timeToMinutes(a['開始時間']) - timeToMinutes(b['開始時間']));
+                const bookingsForDay = currentMonthBookings
+                    .filter(b => b['預約日期'] === thisDateStr)
+                    .sort((a,b) => timeToMinutes(a['開始時間']) - timeToMinutes(b['開始時間']));
                 
                 const detailsContainer = document.createElement('div');
-                detailsContainer.className = 'flex-grow overflow-hidden';
+                detailsContainer.className = 'flex-grow overflow-hidden flex flex-col gap-1';
                 dayCell.appendChild(detailsContainer);
 
                 if (bookingsForDay.length > 0) {
                     bookingsForDay.slice(0, 2).forEach(booking => {
-                        const room = rooms.find(r => r.name === booking['場地名稱']);
-                        if (room) {
+                        const roomConfig = rooms.find(r => r.name === booking['場地名稱']);
+                        if (roomConfig) {
                             const item = document.createElement('div');
                             item.className = 'calendar-booking-item';
                             item.innerHTML = `
-                                <div class="booking-dot ${room.color} mr-1"></div>
-                                <span class="truncate">${booking['開始時間']}-${booking['結束時間']}</span>
+                                <div class="booking-dot ${roomConfig.colorClass} mr-1 flex-shrink-0 shadow-sm"></div>
+                                <span class="truncate font-medium" title="${booking['場地名稱']} ${booking['開始時間']}">${booking['開始時間']} ${booking['借用者']}</span>
                             `;
                             detailsContainer.appendChild(item);
                         }
@@ -425,41 +865,53 @@
 
                     if (bookingsForDay.length > 2) {
                         const more = document.createElement('div');
-                        more.className = 'text-xs text-gray-500 text-center';
-                        more.textContent = `還有 ${bookingsForDay.length - 2} 項...`;
+                        more.className = 'text-[10px] text-slate-400 font-bold pl-3 mt-1';
+                        more.textContent = `+${bookingsForDay.length - 2} 筆`;
                         detailsContainer.appendChild(more);
                     }
+                    
+                    const indicator = document.createElement('div');
+                    indicator.className = 'w-2 h-2 rounded-full bg-[#EF3B24] absolute top-2 right-2 shadow-sm';
+                    topRow.appendChild(indicator);
                 }
                 
                 if (holidayInfo) {
                     const holidayEl = document.createElement('div');
                     holidayEl.className = 'holiday-name truncate';
                     holidayEl.textContent = holidayInfo.name;
+                    holidayEl.title = holidayInfo.name;
                     detailsContainer.appendChild(holidayEl);
                 }
 
                 if (bookingsForDay.length > 0) {
-                    const tooltipContent = bookingsForDay.map(b => 
-                        `<strong>${b['場地名稱']} (${b['開始時間']}-${b['結束時間']})</strong><br>預約者: ${b['借用者']}<br>用途: ${b['預訂用途']}`
-                    ).join('<hr class="my-2">');
+                    const tooltipContent = bookingsForDay.map(b => `
+                        <div class="mb-2 last:mb-0">
+                            <span class="inline-block w-2 h-2 rounded-full ${rooms.find(r=>r.name===b['場地名稱'])?.colorClass||'bg-gray-500'} mr-1"></span>
+                            <strong class="text-blue-800">${b['開始時間']}-${b['結束時間']}</strong> 
+                            <span class="text-slate-600 font-bold">${b['場地名稱']}</span><br>
+                            <span class="text-sm text-slate-500 pl-3">借用: ${b['借用者']}</span>
+                        </div>
+                    `).join('<div class="h-px bg-slate-100 my-1"></div>');
                     
                     const instance = tippy(dayCell, {
-                        content: tooltipContent,
+                        content: `<div class="p-1">${tooltipContent}</div>`,
                         allowHTML: true,
-                        theme: 'light-border',
-                        placement: 'top',
+                        theme: 'chimei',
+                        placement: 'auto',
+                        delay: [300, 0] 
                     });
                     tippyInstances.push(instance);
                 }
 
-                calendarGrid.appendChild(dayCell);
+                els.calendar.grid.appendChild(dayCell);
             }
         };
 
         async function fetchHolidays(year) {
-            if (holidays[year]) return;
+            if (holidays[year]) return; 
             try {
                 const response = await fetch(HOLIDAY_API_URL.replace('{year}', year));
+                if (!response.ok) throw new Error('Network response was not ok');
                 const data = await response.json();
                 const holidayMap = {};
                 data.forEach(item => {
@@ -468,227 +920,260 @@
                     }
                 });
                 holidays = { ...holidays, ...holidayMap };
+                holidays[year] = true; 
             } catch (error) {
-                console.error(`無法載入 ${year} 年的假日資訊:`, error);
+                console.warn(`無法載入 ${year} 年的假日資訊:`, error);
             }
         }
 
-        async function updateCalendarView() {
+        async function updateViewData() {
             const year = calendarDate.getFullYear();
             const month = calendarDate.getMonth() + 1;
             const monthString = `${year}-${String(month).padStart(2, '0')}`;
             
-            showLoader();
+            loaderCtrl.show();
             try {
-                await fetchHolidays(year);
-                const response = await fetch(`${WEB_APP_URL}?month=${monthString}`);
-                if (!response.ok) throw new Error('無法讀取月曆資料');
-                const result = await response.json();
-                if (result.status !== 'success') throw new Error(result.message);
-                // 載入月曆資料，並將資料存入 currentMonthBookings
-                renderCalendar(calendarDate, result.data); 
+                await Promise.all([
+                    fetchHolidays(year),
+                    fetch(`${WEB_APP_URL}?month=${monthString}`)
+                        .then(res => res.json())
+                        .then(result => {
+                            if (result.status !== 'success') throw new Error(result.message);
+                            currentMonthBookings = result.data;
+                        })
+                ]);
             } catch (error) {
-                console.error("Fetch month bookings error:", error);
-                await customAlert(`讀取月曆資料失敗: ${error.message}`);
-                renderCalendar(calendarDate, []); // 即使失敗也渲染空日曆
+                console.error("Data fetch error:", error);
+                await customAlert(`資料讀取失敗，請檢查網路連線或稍後再試。<br><small class="text-slate-400 mt-2 block">${error.message}</small>`, 'warning', '讀取錯誤');
+                currentMonthBookings = []; 
             } finally {
-                hideLoader();
+                renderCalendar(calendarDate, currentMonthBookings);
+                renderScheduleFromMonthData(els.datePicker.value);
+                loaderCtrl.hide();
             }
         }
-        
-        function showBookingModal(roomName, startTime) {
-            bookingModal.classList.remove('opacity-0', 'pointer-events-none');
-            bookingModal.querySelector('div').classList.remove('scale-95');
-            document.getElementById('modal-room-name').textContent = roomName;
-            document.getElementById('modal-date').textContent = datePicker.value;
-            document.getElementById('modal-start-time').textContent = startTime;
-            const endTimeSelect = document.getElementById('end-time-select');
-            const roomBookingsToday = currentDailyBookings.filter(b => b['場地名稱'] === roomName);
-            const startIndex = timeSlots.indexOf(startTime);
-            populateEndTimeSelect(endTimeSelect, startIndex, roomBookingsToday);
-            ['booker-name', 'booker-contact', 'booking-purpose'].forEach(id => document.getElementById(id).value = '');
-        };
-        
-        function showEditModal(booking) {
-            editModal.classList.remove('opacity-0', 'pointer-events-none');
-            editModal.querySelector('div').classList.remove('scale-95');
-            editModal.dataset.bookingId = booking['預約ID'];
-            document.getElementById('edit-modal-room-name').textContent = booking['場地名稱'];
-            document.getElementById('edit-modal-date').textContent = booking['預約日期'];
-            document.getElementById('edit-modal-start-time').textContent = booking['開始時間'];
-            document.getElementById('edit-booker-name').value = booking['借用者'];
-            document.getElementById('edit-booker-contact').value = booking['聯絡方式'];
-            document.getElementById('edit-booking-purpose').value = booking['預訂用途'];
-            const endTimeSelect = document.getElementById('edit-end-time-select');
-            const roomBookingsToday = currentDailyBookings.filter(b => b['場地名稱'] === booking['場地名稱'] && b['預約ID'] !== booking['預約ID']);
-            const startIndex = timeSlots.indexOf(booking['開始時間']);
-            populateEndTimeSelect(endTimeSelect, startIndex, roomBookingsToday, booking['結束時間']);
+
+        function hideAllModals() {
+            closeModal(els.modals.booking);
+            closeModal(els.modals.edit);
+            ['booker-name', 'booker-contact', 'booking-purpose', 'edit-booker-name', 'edit-booker-contact', 'edit-booking-purpose'].forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.value = '';
+            });
         }
-        
-        function populateEndTimeSelect(selectElement, startIndex, bookings, currentEndTime = null) {
+
+        function populateEndTimeSelect(selectElement, startIndex, existingBookings, currentEndTime = null) {
             selectElement.innerHTML = '';
+            
             for (let i = startIndex + 1; i < timeSlots.length; i++) {
                 const slotTime = timeSlots[i];
                 const option = document.createElement('option');
                 option.value = slotTime;
                 option.textContent = slotTime;
+                
                 if (currentEndTime && slotTime === currentEndTime) option.selected = true;
                 selectElement.appendChild(option);
-                const nextBooking = bookings
+                
+                const nextBooking = existingBookings
                     .filter(b => timeToMinutes(b['開始時間']) > timeToMinutes(timeSlots[startIndex]))
                     .sort((a,b) => timeToMinutes(a['開始時間']) - timeToMinutes(b['開始時間']))[0];
-                if (nextBooking && timeToMinutes(slotTime) > timeToMinutes(nextBooking['開始時間'])) {
-                    selectElement.removeChild(option);
-                    break;
+                
+                if (nextBooking && timeToMinutes(slotTime) >= timeToMinutes(nextBooking['開始時間'])) {
+                    if(timeToMinutes(slotTime) > timeToMinutes(nextBooking['開始時間'])){
+                        selectElement.removeChild(option);
+                    }
+                    break; 
                 }
-            }
-             if (selectElement.options.length === 0 && startIndex < timeSlots.length - 1) {
+            } 
+            
+            if (selectElement.options.length === 0 && startIndex < timeSlots.length - 1) {
                  const option = document.createElement('option');
                  option.value = timeSlots[startIndex+1];
                  option.textContent = timeSlots[startIndex+1];
                  selectElement.appendChild(option);
             }
+            
+            if(!currentEndTime && selectElement.options.length > 0) selectElement.selectedIndex = 0;
         }
 
-        function hideAllModals() {
-             bookingModal.classList.add('opacity-0', 'pointer-events-none');
-             bookingModal.querySelector('div').classList.add('scale-95');
-             editModal.classList.add('opacity-0', 'pointer-events-none');
-             editModal.querySelector('div').classList.add('scale-95');
-        };
+        function showBookingModal(roomName, startTime) {
+            document.getElementById('modal-room-name').textContent = roomName;
+            document.getElementById('modal-date').textContent = els.datePicker.value;
+            document.getElementById('modal-start-time').textContent = startTime;
+            
+            const endTimeSelect = document.getElementById('end-time-select');
+            const roomBookingsToday = currentDailyBookings.filter(b => b['場地名稱'] === roomName);
+            const startIndex = timeSlots.indexOf(startTime);
+            
+            populateEndTimeSelect(endTimeSelect, startIndex, roomBookingsToday);
+            
+            openModal(els.modals.booking);
+            setTimeout(() => document.getElementById('booker-name').focus(), 300);
+        }
+
+        function showEditModal(booking) {
+            els.modals.edit.dataset.bookingId = booking['預約ID'];
+            document.getElementById('edit-modal-room-name').textContent = booking['場地名稱'];
+            document.getElementById('edit-modal-date').textContent = booking['預約日期'];
+            document.getElementById('edit-modal-start-time').textContent = booking['開始時間'];
+            
+            document.getElementById('edit-booker-name').value = booking['借用者'];
+            document.getElementById('edit-booker-contact').value = booking['聯絡方式'];
+            document.getElementById('edit-booking-purpose').value = booking['預訂用途'];
+            
+            const endTimeSelect = document.getElementById('edit-end-time-select');
+            const roomBookingsToday = currentDailyBookings.filter(b => b['場地名稱'] === booking['場地名稱'] && b['預約ID'] !== booking['預約ID']);
+            const startIndex = timeSlots.indexOf(booking['開始時間']);
+            
+            populateEndTimeSelect(endTimeSelect, startIndex, roomBookingsToday, booking['結束時間']);
+            
+            openModal(els.modals.edit);
+        }
 
         async function handleApiCall(action, payload, successMessage) {
-            showLoader();
+            loaderCtrl.show();
             try {
                 const response = await fetch(WEB_APP_URL, { 
                     method: 'POST', 
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify({ action, payload })
                 });
+                
                 const result = await response.json();
-                if (result.status !== 'success') throw new Error(result.message || '操作失敗');
+                if (result.status !== 'success') throw new Error(result.message || '伺服器回傳錯誤');
                 
-                hideLoader(); 
                 hideAllModals();
-
-                renderSchedule(result.data);
-                await updateCalendarView(); 
-                renderScheduleFromMonthData(datePicker.value); 
-                
-                await customAlert(successMessage);
+                await updateViewData();
+                await customAlert(successMessage, 'success', '操作成功');
             } catch (error) {
-                hideLoader(); 
-                console.error(`${action} error:`, error);
-                await customAlert(`操作失敗：${error.message}`);
+                console.error(`${action} API Error:`, error);
+                await customAlert(`操作失敗，請稍後再試。<br><small class="text-slate-400 mt-2 block">${error.message}</small>`, 'warning', '錯誤');
+            } finally {
+                loaderCtrl.hide();
             }
         }
 
-        const handleConfirmBooking = () => {
+        document.getElementById('confirm-booking-btn').addEventListener('click', () => {
             const name = document.getElementById('booker-name').value.trim();
             const contact = document.getElementById('booker-contact').value.trim();
             const purpose = document.getElementById('booking-purpose').value.trim();
-            if (!name || !contact || !purpose) { customAlert('所有欄位皆為必填！'); return; }
-            const roomName = document.getElementById('modal-room-name').textContent;
-            const startTime = document.getElementById('modal-start-time').textContent;
-            const endTime = document.getElementById('end-time-select').value;
-            const date = datePicker.value;
-            handleApiCall('book', { date, roomName, startTime, endTime, bookerName: name, contact: contact, purpose: purpose }, '預約成功！');
-        };
-        
-        const handleConfirmEdit = () => {
-            const bookingId = editModal.dataset.bookingId;
+            
+            if (!name || !contact || !purpose) { 
+                customAlert('請填寫所有標記 <span class="text-red-500 font-bold">*</span> 的必填欄位。', 'warning', '資料不完整'); 
+                return; 
+            }
+            
+            const payload = { 
+                date: els.datePicker.value, 
+                roomName: document.getElementById('modal-room-name').textContent, 
+                startTime: document.getElementById('modal-start-time').textContent, 
+                endTime: document.getElementById('end-time-select').value, 
+                bookerName: name, 
+                contact: contact, 
+                purpose: purpose 
+            };
+            handleApiCall('book', payload, '已成功新增您的預約！');
+        });
+
+        document.getElementById('confirm-edit-btn').addEventListener('click', () => {
             const name = document.getElementById('edit-booker-name').value.trim();
             const contact = document.getElementById('edit-booker-contact').value.trim();
             const purpose = document.getElementById('edit-booking-purpose').value.trim();
-            const endTime = document.getElementById('edit-end-time-select').value;
-            if (!name || !contact || !purpose) { customAlert('所有欄位皆為必填！'); return; }
-            handleApiCall('edit', { bookingId, endTime, bookerName: name, contact: contact, purpose: purpose }, '修改成功！');
-        };
-        
-        async function handleCancelBooking(bookingId) {
+            
+            if (!name || !contact || !purpose) { 
+                customAlert('所有欄位皆不可空白。', 'warning', '資料不完整'); 
+                return; 
+            }
+            
+            const payload = { 
+                bookingId: els.modals.edit.dataset.bookingId, 
+                endTime: document.getElementById('edit-end-time-select').value, 
+                bookerName: name, 
+                contact: contact, 
+                purpose: purpose 
+            };
+            handleApiCall('edit', payload, '預約資訊已成功更新。');
+        });
+
+        document.getElementById('trigger-cancel-btn').addEventListener('click', async () => {
+            const bookingId = els.modals.edit.dataset.bookingId;
             const booking = currentDailyBookings.find(b => b['預約ID'] === bookingId);
             if(!booking) return;
-            const confirmed = await customConfirm(`您確定要取消 ${booking['借用者']} 於 ${booking['開始時間']}-${booking['結束時間']} 的預約嗎？`);
-            if (!confirmed) return;
-            handleApiCall('cancel', { bookingId: bookingId }, '取消成功！');
-        };
+            
+            const confirmed = await customConfirm(
+                `確定要取消 <span class="font-bold text-[#002D62]">${booking['借用者']}</span> 於 <span class="font-bold text-[#EF3B24]">${booking['開始時間']}-${booking['結束時間']}</span> 的預約嗎？<br><span class="text-sm text-slate-500 mt-2 block">此操作無法復原。</span>`
+            );
+            
+            if (confirmed) handleApiCall('cancel', { bookingId: bookingId }, '該筆預約已取消。');
+        });
 
-        scheduleContainer.addEventListener('click', (e) => {
+        document.querySelectorAll('.close-modal-btn').forEach(btn => btn.addEventListener('click', hideAllModals));
+        
+        els.scheduleContainer.addEventListener('click', (e) => {
             const availableCell = e.target.closest('.time-slot-cell.available');
             const bookedSlot = e.target.closest('.booked-slot');
+            
             if (availableCell) {
                 const { roomName, timeSlot } = availableCell.dataset;
                 showBookingModal(roomName, timeSlot);
-            }
-            if (bookedSlot) {
+            } else if (bookedSlot) {
                 const bookingId = bookedSlot.dataset.bookingId;
                 const booking = currentDailyBookings.find(b => b['預約ID'] === bookingId);
                 if (booking) showEditModal(booking);
             }
         });
 
-        calendarGrid.addEventListener('click', (e) => {
+        els.calendar.grid.addEventListener('click', (e) => {
             const dayCell = e.target.closest('.calendar-day');
             if (dayCell && dayCell.dataset.date && !dayCell.classList.contains('other-month')) {
-                datePicker.value = dayCell.dataset.date;
-                datePicker.dispatchEvent(new Event('change')); 
+                els.datePicker.value = dayCell.dataset.date;
+                els.datePicker.dispatchEvent(new Event('change')); 
             }
         });
-        
-        prevMonthBtn.addEventListener('click', async () => {
+
+        els.calendar.prevBtn.addEventListener('click', () => {
             calendarDate.setMonth(calendarDate.getMonth() - 1);
-            await updateCalendarView();
-            const firstDayOfMonth = formatDate(calendarDate);
-            datePicker.value = firstDayOfMonth;
-            renderScheduleFromMonthData(firstDayOfMonth);
+            updateViewData();
         });
 
-        nextMonthBtn.addEventListener('click', async () => {
+        els.calendar.nextBtn.addEventListener('click', () => {
             calendarDate.setMonth(calendarDate.getMonth() + 1);
-            await updateCalendarView();
-            const firstDayOfMonth = formatDate(calendarDate);
-            datePicker.value = firstDayOfMonth;
-            renderScheduleFromMonthData(firstDayOfMonth);
+            updateViewData();
         });
 
-        document.getElementById('confirm-booking-btn').addEventListener('click', handleConfirmBooking);
-        document.getElementById('confirm-edit-btn').addEventListener('click', handleConfirmEdit);
-        document.getElementById('trigger-cancel-btn').addEventListener('click', () => {
-             const bookingId = editModal.dataset.bookingId;
-             handleCancelBooking(bookingId);
+        els.btnToday.addEventListener('click', () => {
+            const todayStr = formatDate(new Date());
+            if (els.datePicker.value !== todayStr) {
+                els.datePicker.value = todayStr;
+                els.datePicker.dispatchEvent(new Event('change'));
+            }
         });
-        
-        document.querySelectorAll('.close-modal-btn').forEach(btn => btn.addEventListener('click', hideAllModals));
-        
-        datePicker.addEventListener('change', async () => {
-            const newDateStr = datePicker.value;
+
+        els.datePicker.addEventListener('change', async () => {
+            const newDateStr = els.datePicker.value;
+            if(!newDateStr) return; 
+
             const [year, month, day] = newDateStr.split('-').map(Number);
-            const newDate = new Date(Date.UTC(year, month - 1, day, 12)); 
+            const currentCalYear = calendarDate.getFullYear();
+            const currentCalMonth = calendarDate.getMonth() + 1;
 
-            const currentMonth = new Date(Date.UTC(calendarDate.getFullYear(), calendarDate.getMonth(), 1, 12));
-
-            if (newDate.getUTCFullYear() !== currentMonth.getUTCFullYear() || newDate.getUTCMonth() !== currentMonth.getUTCMonth()) {
-                calendarDate = new Date(newDate.getUTCFullYear(), newDate.getUTCMonth(), 1);
-                await updateCalendarView(); 
+            if (year !== currentCalYear || month !== currentCalMonth) {
+                calendarDate = new Date(year, month - 1, 1);
+                await updateViewData(); 
             } else {
                 renderCalendar(calendarDate, currentMonthBookings);
+                renderScheduleFromMonthData(newDateStr);
             }
-            
-            renderScheduleFromMonthData(newDateStr);
         });
 
         window.addEventListener('load', async () => {
             const today = new Date();
-            const todayStr = formatDate(today);
-            datePicker.value = todayStr;
+            els.datePicker.value = formatDate(today);
             calendarDate = new Date(today.getFullYear(), today.getMonth(), 1);
             
-            await updateCalendarView(); 
-            
-            renderScheduleFromMonthData(todayStr);
+            await updateViewData();
         });
+
     </script>
 </body>
 </html>
-
-

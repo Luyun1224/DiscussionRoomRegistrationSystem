@@ -520,7 +520,14 @@
         updateClock();
 
         // --- 設定區 ---
-        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbx19UdR3V26vH3kSp7OUPaTnWmEw0bRA2jhzXZ7bY-Fi5khPakQqN8qncOIpGeDry2tBA/exec'; 
+        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbx19UdR3V26vH3kSp7OUPaTnWmEw0bRA2jhzXZ7bY-Fi5khPakQqN8qncOIpGeDry2tBA/exec';
+        // 讀取改走 Google Sheets 發布端點，避開 Apps Script doGet 冷啟動/配額造成的載入不穩。
+        // 請將下列網址改為試算表「發布到網路」後的 CSV 或 GViz(tqx=out:csv/json) 端點；可放多個作為備援。
+        const SHEET_READ_ENDPOINTS = [
+            // 'https://docs.google.com/spreadsheets/d/e/你的發布ID/pub?gid=0&single=true&output=csv',
+            // 'https://docs.google.com/spreadsheets/d/你的試算表ID/gviz/tq?tqx=out:csv&sheet=預約紀錄'
+        ];
+        const READ_TIMEOUT_MS = 8000;
         const HOLIDAY_API_URL = 'https://cdn.jsdelivr.net/gh/ruyut/TaiwanCalendar/data/{year}.json';
         
         // 房間設定 (使用 OKC 配色：深海軍藍 / 雷霆藍)
@@ -908,6 +915,111 @@
             }
         };
 
+        function fetchWithTimeout(url, options = {}) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), READ_TIMEOUT_MS);
+            return fetch(url, { ...options, signal: controller.signal })
+                .finally(() => clearTimeout(timeoutId));
+        }
+
+        function parseCsv(text) {
+            const rows = [];
+            let row = [];
+            let cell = '';
+            let inQuotes = false;
+
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                const nextChar = text[i + 1];
+
+                if (char === '"') {
+                    if (inQuotes && nextChar === '"') {
+                        cell += '"';
+                        i++;
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    row.push(cell);
+                    cell = '';
+                } else if ((char === '\n' || char === '\r') && !inQuotes) {
+                    if (char === '\r' && nextChar === '\n') i++;
+                    row.push(cell);
+                    if (row.some(value => value.trim() !== '')) rows.push(row);
+                    row = [];
+                    cell = '';
+                } else {
+                    cell += char;
+                }
+            }
+
+            row.push(cell);
+            if (row.some(value => value.trim() !== '')) rows.push(row);
+            return rows;
+        }
+
+        function normalizeBookingRows(rows) {
+            if (!rows.length) return [];
+            const headers = rows[0].map(header => header.replace(/^\uFEFF/, '').trim());
+            return rows.slice(1).map(row => {
+                const booking = {};
+                headers.forEach((header, index) => {
+                    booking[header] = (row[index] || '').trim();
+                });
+                return booking;
+            }).filter(booking => booking['預約日期'] && booking['場地名稱']);
+        }
+
+        function parseGvizJson(text) {
+            const jsonText = text.trim().replace(/^\/\*O_o\*\//, '').replace(/^google\.visualization\.Query\.setResponse\(/, '').replace(/\);?$/, '');
+            const table = JSON.parse(jsonText).table;
+            const headers = table.cols.map(col => col.label || col.id);
+            return table.rows.map(row => {
+                const booking = {};
+                headers.forEach((header, index) => {
+                    const cell = row.c[index];
+                    booking[header] = cell ? String(cell.f ?? cell.v ?? '').trim() : '';
+                });
+                return booking;
+            }).filter(booking => booking['預約日期'] && booking['場地名稱']);
+        }
+
+        function parseSheetResponse(text, endpoint) {
+            const trimmed = text.trim();
+            if (trimmed.startsWith('google.visualization.Query.setResponse') || trimmed.startsWith('/*O_o*/')) {
+                return parseGvizJson(trimmed);
+            }
+            return normalizeBookingRows(parseCsv(text));
+        }
+
+        async function fetchBookingsFromPublishedSheet(monthString) {
+            if (SHEET_READ_ENDPOINTS.length === 0) {
+                console.warn('尚未設定 Google Sheets 發布 CSV/GViz 讀取端點，暫時回退使用 Apps Script doGet。');
+                const response = await fetchWithTimeout(`${WEB_APP_URL}?month=${monthString}`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const result = await response.json();
+                if (result.status !== 'success') throw new Error(result.message);
+                return result.data;
+            }
+
+            const errors = [];
+            for (const endpoint of SHEET_READ_ENDPOINTS) {
+                try {
+                    const separator = endpoint.includes('?') ? '&' : '?';
+                    const cacheBustedUrl = `${endpoint}${separator}_=${Date.now()}`;
+                    const response = await fetchWithTimeout(cacheBustedUrl);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return parseSheetResponse(await response.text(), endpoint)
+                        .filter(booking => booking['預約日期']?.startsWith(monthString));
+                } catch (error) {
+                    errors.push(`${endpoint}: ${error.message}`);
+                    console.warn('Published sheet read failed:', endpoint, error);
+                }
+            }
+
+            throw new Error(`Google Sheets 發布端點讀取失敗：${errors.join('；')}`);
+        }
+
         async function fetchHolidays(year) {
             if (holidays[year]) return; 
             try {
@@ -936,11 +1048,9 @@
             try {
                 await Promise.all([
                     fetchHolidays(year),
-                    fetch(`${WEB_APP_URL}?month=${monthString}`)
-                        .then(res => res.json())
-                        .then(result => {
-                            if (result.status !== 'success') throw new Error(result.message);
-                            currentMonthBookings = result.data;
+                    fetchBookingsFromPublishedSheet(monthString)
+                        .then(bookings => {
+                            currentMonthBookings = bookings;
                         })
                 ]);
             } catch (error) {

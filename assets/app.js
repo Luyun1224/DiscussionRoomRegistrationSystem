@@ -15,7 +15,8 @@
             // 'https://docs.google.com/spreadsheets/d/e/你的發布ID/pub?gid=0&single=true&output=csv',
             // 'https://docs.google.com/spreadsheets/d/你的試算表ID/gviz/tq?tqx=out:csv&sheet=預約紀錄'
         ];
-        const READ_TIMEOUT_MS = 8000;
+        const READ_TIMEOUT_MS = 25000;
+        const READ_RETRY_DELAYS_MS = [0, 1200, 3000];
         const HOLIDAY_API_URL = 'https://cdn.jsdelivr.net/gh/ruyut/TaiwanCalendar/data/{year}.json';
         
         // 房間設定 (使用 OKC 配色：深海軍藍 / 雷霆藍)
@@ -403,11 +404,36 @@
             }
         };
 
-        function fetchWithTimeout(url, options = {}) {
+        function fetchWithTimeout(url, options = {}, timeoutMs = READ_TIMEOUT_MS) {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), READ_TIMEOUT_MS);
+            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
             return fetch(url, { ...options, signal: controller.signal })
                 .finally(() => clearTimeout(timeoutId));
+        }
+
+        const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+        function getFetchErrorMessage(error) {
+            if (error?.name === 'AbortError') {
+                return `連線逾時（超過 ${Math.round(READ_TIMEOUT_MS / 1000)} 秒未回應）`;
+            }
+            return error?.message || '未知錯誤';
+        }
+
+        async function fetchJsonWithRetry(url, options = {}) {
+            let lastError;
+            for (let attempt = 0; attempt < READ_RETRY_DELAYS_MS.length; attempt++) {
+                if (READ_RETRY_DELAYS_MS[attempt] > 0) await sleep(READ_RETRY_DELAYS_MS[attempt]);
+                try {
+                    const response = await fetchWithTimeout(url, { cache: 'no-store', ...options });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return await response.json();
+                } catch (error) {
+                    lastError = error;
+                    console.warn(`讀取失敗，準備重試 (${attempt + 1}/${READ_RETRY_DELAYS_MS.length}):`, error);
+                }
+            }
+            throw new Error(getFetchErrorMessage(lastError));
         }
 
         function parseCsv(text) {
@@ -483,9 +509,8 @@
         async function fetchBookingsFromPublishedSheet(monthString) {
             if (SHEET_READ_ENDPOINTS.length === 0) {
                 console.warn('尚未設定 Google Sheets 發布 CSV/GViz 讀取端點，暫時回退使用 Apps Script doGet。');
-                const response = await fetchWithTimeout(`${WEB_APP_URL}?month=${monthString}`);
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                const result = await response.json();
+                const separator = WEB_APP_URL.includes('?') ? '&' : '?';
+                const result = await fetchJsonWithRetry(`${WEB_APP_URL}${separator}month=${monthString}&_=${Date.now()}`);
                 if (result.status !== 'success') throw new Error(result.message);
                 return result.data;
             }
@@ -495,12 +520,12 @@
                 try {
                     const separator = endpoint.includes('?') ? '&' : '?';
                     const cacheBustedUrl = `${endpoint}${separator}_=${Date.now()}`;
-                    const response = await fetchWithTimeout(cacheBustedUrl);
+                    const response = await fetchWithTimeout(cacheBustedUrl, { cache: 'no-store' });
                     if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     return parseSheetResponse(await response.text(), endpoint)
                         .filter(booking => booking['預約日期']?.startsWith(monthString));
                 } catch (error) {
-                    errors.push(`${endpoint}: ${error.message}`);
+                    errors.push(`${endpoint}: ${getFetchErrorMessage(error)}`);
                     console.warn('Published sheet read failed:', endpoint, error);
                 }
             }
@@ -543,7 +568,7 @@
                 ]);
             } catch (error) {
                 console.error("Data fetch error:", error);
-                await customAlert(`資料讀取失敗，請檢查網路連線或稍後再試。<br><small class="text-slate-400 mt-2 block">${error.message}</small>`, 'warning', '讀取錯誤');
+                await customAlert(`資料讀取失敗，請檢查網路連線或稍後再試。<br><small class="text-slate-400 mt-2 block">${getFetchErrorMessage(error)}</small>`, 'warning', '讀取錯誤');
                 currentMonthBookings = []; 
             } finally {
                 renderCalendar(calendarDate, currentMonthBookings);

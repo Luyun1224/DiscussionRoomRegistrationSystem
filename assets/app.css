@@ -1,0 +1,245 @@
+        :root {
+            --okc-navy: #002D62;
+            --okc-light-blue: #007AC1;
+            --okc-orange: #EF3B24;
+        }
+
+        body { 
+            font-family: 'Noto Sans TC', sans-serif; 
+            /* 質感點陣背景 */
+            background-color: #f4f7f9;
+            background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+            background-size: 24px 24px;
+            position: relative;
+            min-height: 100vh;
+        }
+
+        /* 系統層級動態光暈 (活潑感) */
+        .bg-shapes {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            z-index: -1;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        .bg-shape-1 {
+            position: absolute; top: -15%; left: -5%;
+            width: 50vw; height: 50vw;
+            background: radial-gradient(circle, rgba(0, 122, 193, 0.08) 0%, transparent 60%);
+            border-radius: 50%;
+            animation: float 18s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: transform;
+        }
+        .bg-shape-2 {
+            position: absolute; bottom: -10%; right: -5%;
+            width: 40vw; height: 40vw;
+            background: radial-gradient(circle, rgba(239, 59, 36, 0.05) 0%, transparent 60%);
+            border-radius: 50%;
+            animation: float 22s infinite alternate-reverse cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: transform;
+        }
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(40px, 60px) scale(1.1); }
+        }
+
+        /* 系統頂部導覽列 (玻璃擬物風) */
+        .system-navbar {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 30px -5px rgba(0, 0, 0, 0.05);
+        }
+
+        /* 高級質感卡片 (毛玻璃效果) */
+        .premium-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 10px 40px -10px rgba(0,0,0,0.06);
+            border-radius: 1.25rem;
+        }
+
+        /* 按鈕與元件設計 */
+        .btn-primary { 
+            background-color: var(--okc-orange); 
+            color: white; 
+            transition: all 0.2s ease-in-out; 
+            box-shadow: 0 4px 12px -2px rgba(239, 59, 36, 0.4);
+        }
+        .btn-primary:hover { 
+            background-color: #d1301c; 
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px -2px rgba(209, 48, 28, 0.5);
+        }
+        .btn-danger { 
+            background-color: #ef4444; 
+            color: white; 
+            transition: all 0.2s ease-in-out; 
+        }
+        .btn-danger:hover { background-color: #dc2626; }
+        
+        .input-field {
+            width: 100%;
+            padding: 0.6rem 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            background: rgba(255, 255, 255, 0.9);
+            transition: all 0.2s;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: var(--okc-light-blue);
+            box-shadow: 0 0 0 3px rgba(0, 122, 193, 0.15);
+            background: #fff;
+        }
+
+        /* 模態框動畫與背景修復 */
+        .modal-backdrop { 
+            transition: opacity 0.3s ease-out, visibility 0.3s ease-out; 
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+        .modal-hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+        .modal-visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease-out;
+        }
+        .modal-hidden .modal-content {
+            transform: scale(0.95) translateY(10px);
+            opacity: 0;
+        }
+        .modal-visible .modal-content {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+        }
+
+        /* 時間表網格 */
+        .time-slot-cell { 
+            transition: background-color 0.15s ease; 
+            position: relative; 
+        }
+        .time-slot-cell.available:hover { 
+            background-color: #fff3ed; /* 帶橘的淺色 */
+            z-index: 10; 
+        }
+        .booked-slot { 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 4px; 
+            font-size: 0.85rem; 
+            color: white; 
+            overflow: hidden; 
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .booked-slot:hover {
+            transform: scale(1.02) translateY(-1px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+            z-index: 25 !important;
+        }
+        .booked-slot-inner {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-align: center;
+            line-height: 1.3;
+        }
+
+        /* 月曆樣式 */
+        .calendar-grid { 
+            display: grid; 
+            grid-template-columns: repeat(7, 1fr); 
+            gap: 8px; 
+        }
+        .calendar-day { 
+            background-color: rgba(255, 255, 255, 0.6); 
+            border: 1px solid #e2e8f0; 
+            border-radius: 0.75rem; 
+            padding: 8px; 
+            transition: all 0.2s ease; 
+            cursor: pointer; 
+            display: flex; 
+            flex-direction: column;
+            min-height: 100px;
+            position: relative;
+        }
+        .calendar-day:hover:not(.other-month) { 
+            background-color: #ffffff;
+            border-color: #cbd5e1;
+            box-shadow: 0 4px 12px -2px rgb(0 0 0 / 0.05); 
+            transform: translateY(-1px);
+        }
+        .calendar-day.other-month { 
+            background-color: transparent; 
+            color: #cbd5e1; 
+            border-color: transparent;
+            cursor: default; 
+        }
+        .calendar-day.is-today {
+            border: 2px solid var(--okc-orange);
+            background-color: #fffaf9;
+        }
+        .calendar-day.is-today .day-number { 
+            background-color: var(--okc-orange); 
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            font-weight: bold;
+        }
+        .calendar-day.is-selected { 
+            background-color: #f0f7fb; 
+            border-color: var(--okc-light-blue); 
+        }
+        .calendar-day.is-weekend .day-number { color: #ef4444; }
+        
+        .booking-dot { min-width: 8px; width: 8px; height: 8px; border-radius: 50%; }
+        .calendar-booking-item { display: flex; align-items: center; font-size: 0.75rem; margin-top: 4px; overflow: hidden; color: #475569; }
+        .holiday-name { font-size: 0.7rem; color: #ef4444; text-align: center; font-weight: 500; margin-top: auto; padding-top: 4px; border-top: 1px dashed #fca5a5;}
+
+        /* Tippy.js Theme */
+        .tippy-box[data-theme~='chimei'] {
+            background-color: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(8px);
+            color: #1e293b;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.75rem;
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+            font-family: 'Noto Sans TC', sans-serif;
+        }
+        .tippy-box[data-theme~='chimei'][data-placement^='top'] > .tippy-arrow::before { border-top-color: #e2e8f0; }
+        .tippy-box[data-theme~='chimei'][data-placement^='bottom'] > .tippy-arrow::before { border-bottom-color: #e2e8f0; }
+        .tippy-content { padding: 12px; }
+
+        /* Loader */
+        .loader-spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid var(--okc-orange);
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* 隱藏滾動條但保留功能 */
+        .custom-scrollbar::-webkit-scrollbar { height: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }

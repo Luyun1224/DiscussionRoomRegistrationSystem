@@ -28,16 +28,17 @@
         // --- 狀態變數 ---
         let roomBlocks = [];
         let blockServiceAvailable = false;
+        let bookingServiceAvailable = false;
+        let longBookingBusy = false;
         const findRoomBlock = (roomName, date) => roomBlocks.find(block =>
             block.roomName === roomName && block.startDate <= date && date <= block.endDate);
 
         function applyBlockResponse(result) {
             blockServiceAvailable = result.capabilities?.roomBlocks === true && Array.isArray(result.blocks);
             roomBlocks = blockServiceAvailable ? result.blocks : [];
-            document.getElementById('block-submit').disabled = !blockServiceAvailable;
-            document.getElementById('block-service-status').textContent = blockServiceAvailable
-                ? '選擇場地與起訖日期即可借用，不需密碼。'
-                : '目前無法送出長時間借用，請聯絡系統維護者更新服務。';
+            bookingServiceAvailable = true;
+            document.getElementById('block-submit').disabled = longBookingBusy;
+            document.getElementById('block-service-status').textContent = '填寫借用者資料後，系統會為期間內每一天建立 08:00–18:00 的預約。';
             renderBlockList();
         }
 
@@ -45,7 +46,7 @@
             const list = document.getElementById('block-list');
             list.replaceChildren();
             if (!roomBlocks.length) {
-                list.textContent = blockServiceAvailable ? '目前沒有長時間借用紀錄。' : '長時間借用紀錄尚不可用。';
+                list.textContent = bookingServiceAvailable ? '長時間借用會列在月曆與每日預約表，可點擊各日預約檢視或取消。' : '正在載入預約資料…';
                 return;
             }
             roomBlocks.forEach(block => {
@@ -627,6 +628,7 @@
                 ]);
             } catch (error) {
                 blockServiceAvailable = false;
+                bookingServiceAvailable = false;
                 document.getElementById('block-submit').disabled = true;
                 document.getElementById('block-service-status').textContent = '連線失敗，無法確認最新包場紀錄，請重新載入。';
                 console.error("Data fetch error:", error);
@@ -754,7 +756,7 @@
         const longBookingModal = document.getElementById('long-booking-modal');
         const longBookingButton = document.getElementById('open-long-booking');
         function closeLongBooking() {
-            if (!longBookingModal.classList.contains('modal-visible')) return;
+            if (longBookingBusy || !longBookingModal.classList.contains('modal-visible')) return;
             closeModal(longBookingModal);
             longBookingButton.focus();
         }
@@ -781,26 +783,93 @@
             const start = document.getElementById('block-start').value;
             if (start) document.getElementById('block-end').value = `${start.slice(0, 4)}-12-31`;
         });
+        function rangeDates(start, end) {
+            const valid = value => /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+                !Number.isNaN(new Date(`${value}T00:00:00Z`).getTime()) &&
+                new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
+            if (!valid(start) || !valid(end) || end < start) throw new Error('結束日期不可早於開始日期，請確認日期格式。');
+            const dates = [];
+            const date = new Date(`${start}T00:00:00Z`);
+            while (date.toISOString().slice(0, 10) <= end) {
+                dates.push(date.toISOString().slice(0, 10));
+                date.setUTCDate(date.getUTCDate() + 1);
+            }
+            return dates;
+        }
+
+        async function createLongBooking(payload) {
+            const dates = rangeDates(payload.startDate, payload.endDate);
+            const purpose = `[長時間借用 ${payload.startDate}～${payload.endDate}] ${payload.reason}`;
+            const records = [];
+            document.getElementById('block-service-status').textContent = '正在檢查整段期間的預約…';
+            for (const month of new Set(dates.map(date => date.slice(0, 7)))) {
+                records.push(...await fetchBookingsFromPublishedSheet(month));
+            }
+            // Exact matching reservations let a partial submission resume without duplicating days.
+            const sameBooking = booking => booking['借用者'] === payload.bookerName &&
+                booking['聯絡方式'] === payload.contact && booking['預訂用途'] === purpose &&
+                booking['開始時間'] === '08:00' && booking['結束時間'] === '18:00';
+            const pending = [];
+            for (const date of dates) {
+                const dayBookings = records.filter(b => b['場地名稱'] === payload.roomName && b['預約日期'] === date);
+                if (findRoomBlock(payload.roomName, date) || dayBookings.some(b => !sameBooking(b) && b['開始時間'] < '18:00' && b['結束時間'] > '08:00')) {
+                    throw new Error(`${date} 已有預約，未新增任何預約。請調整區間或先處理衝突。`);
+                }
+                if (!dayBookings.some(sameBooking)) pending.push(date);
+            }
+            let completed = dates.length - pending.length;
+            for (const date of pending) {
+                document.getElementById('block-service-status').textContent = `正在建立 ${date} 的預約（${completed}/${dates.length} 日），請勿關閉頁面。`;
+                try {
+                    // Do not retry writes: a lost response may already have created a booking.
+                    const response = await fetchWithTimeout(WEB_APP_URL, {
+                        method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({ action: 'book', payload: {
+                            date, roomName: payload.roomName, startTime: '08:00', endTime: '18:00',
+                            bookerName: payload.bookerName, contact: payload.contact, purpose
+                        } })
+                    });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const result = await response.json();
+                    if (result.status !== 'success') throw new Error(result.message || '伺服器回傳錯誤');
+                    completed++;
+                } catch (error) {
+                    throw new Error(`已確認完成 ${completed}/${dates.length} 日；${date} 未確認成功，後續日期未送出。請檢查月曆後以相同資料重新送出，已完成的日期會略過。`);
+                }
+            }
+            return dates.length;
+        }
+
         document.getElementById('block-form').addEventListener('submit', async event => {
             event.preventDefault();
-            if (!blockServiceAvailable) return;
+            if (!bookingServiceAvailable || longBookingBusy) return;
             const payload = {
                 roomName: document.getElementById('block-room').value,
                 startDate: document.getElementById('block-start').value,
                 endDate: document.getElementById('block-end').value,
+                bookerName: document.getElementById('long-booker-name').value.trim(),
+                contact: document.getElementById('long-booker-contact').value.trim(),
                 reason: document.getElementById('block-reason').value.trim()
             };
-            if (payload.endDate < payload.startDate || !payload.reason) {
-                await customAlert('請填寫借用用途，且結束日期不可早於開始日期。', 'warning');
+            if (!payload.bookerName || !payload.contact || !payload.reason) {
+                await customAlert('請填寫借用者姓名、聯絡方式與借用用途。', 'warning');
                 return;
             }
+            longBookingBusy = true;
             document.getElementById('block-submit').disabled = true;
             try {
-                if (await handleApiCall('block', payload, '長時間借用已建立，期間內不再開放其他預約。')) {
-                    document.getElementById('block-reason').value = '';
-                }
+                const count = await createLongBooking(payload);
+                closeModal(longBookingModal);
+                longBookingButton.focus();
+                await updateViewData();
+                await customAlert(`已完成 ${count} 日的全天借用，借用者資料已儲存至每日預約。`, 'success', '操作成功');
+            } catch (error) {
+                // Refresh even after an uncertain write; partial results must remain visible.
+                await updateViewData();
+                await customAlert(error.message, 'warning', '長時間借用未完成');
             } finally {
-                document.getElementById('block-submit').disabled = !blockServiceAvailable;
+                longBookingBusy = false;
+                document.getElementById('block-submit').disabled = !bookingServiceAvailable;
             }
         });
 

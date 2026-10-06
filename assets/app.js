@@ -26,6 +26,51 @@
         ];
 
         // --- 狀態變數 ---
+        let roomBlocks = [];
+        let blockServiceAvailable = false;
+        const findRoomBlock = (roomName, date) => roomBlocks.find(block =>
+            block.roomName === roomName && block.startDate <= date && date <= block.endDate);
+
+        function applyBlockResponse(result) {
+            blockServiceAvailable = result.capabilities?.roomBlocks === true && Array.isArray(result.blocks);
+            roomBlocks = blockServiceAvailable ? result.blocks : [];
+            document.getElementById('block-submit').disabled = !blockServiceAvailable;
+            document.getElementById('block-service-status').textContent = blockServiceAvailable
+                ? '包場服務已連線。新增與解除需輸入管理密碼。'
+                : '目前後端尚未支援包場，請先部署包場後端。';
+            renderBlockList();
+        }
+
+        function renderBlockList() {
+            const list = document.getElementById('block-list');
+            list.replaceChildren();
+            if (!roomBlocks.length) {
+                list.textContent = blockServiceAvailable ? '目前沒有包場紀錄。' : '包場紀錄尚不可用。';
+                return;
+            }
+            roomBlocks.forEach(block => {
+                const row = document.createElement('div');
+                row.className = 'block-record';
+                const text = document.createElement('span');
+                text.textContent = `${block.roomName}｜${block.startDate} 至 ${block.endDate}（含迄日）｜${block.reason}`;
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.textContent = '解除包場';
+                button.className = 'text-red-700 underline';
+                button.addEventListener('click', async () => {
+                    const keyInput = document.getElementById('block-admin-key');
+                    const adminKey = keyInput.value;
+                    keyInput.value = '';
+                    if (!adminKey) return customAlert('請先輸入管理密碼。', 'warning');
+                    if (await customConfirm('解除後，該區間將重新開放借用。是否繼續？')) {
+                        await handleApiCall('unblock', { blockId: block.id, adminKey }, '已解除包場。');
+                    }
+                });
+                row.append(text, button);
+                list.append(row);
+            });
+        }
+
         let currentDailyBookings = []; 
         let currentMonthBookings = []; 
         let calendarDate = new Date(); 
@@ -196,6 +241,13 @@
                     const isHour = slot.endsWith(':00');
                     const cell = document.createElement('div');
                     cell.className = `time-slot-cell border-b border-r border-slate-100 available cursor-pointer ${isHour ? 'border-l-slate-200' : ''}`;
+                    const block = findRoomBlock(room.name, els.datePicker.value);
+                    if (block) {
+                        cell.classList.remove('available', 'cursor-pointer');
+                        cell.classList.add('room-blocked');
+                        cell.title = `包場：${block.reason}`;
+                        if (slotIndex === 0) cell.textContent = '包場';
+                    }
                     cell.dataset.roomName = room.name;
                     cell.dataset.timeSlot = slot;
                     cell.style.gridRow = `${roomIndex + 2}`;
@@ -207,7 +259,7 @@
 
             els.scheduleContainer.appendChild(grid);
             
-            if (currentDailyBookings.length === 0) {
+            if (currentDailyBookings.length === 0 && !rooms.some(room => findRoomBlock(room.name, els.datePicker.value))) {
                 const emptyState = document.createElement('div');
                 emptyState.className = 'absolute inset-0 flex flex-col items-center justify-center text-slate-400 pointer-events-none z-30 pt-10';
                 emptyState.innerHTML = `
@@ -345,6 +397,13 @@
                 const detailsContainer = document.createElement('div');
                 detailsContainer.className = 'flex-grow overflow-hidden flex flex-col gap-1';
                 dayCell.appendChild(detailsContainer);
+                roomBlocks.filter(block => block.startDate <= thisDateStr && thisDateStr <= block.endDate).forEach(block => {
+                    const badge = document.createElement('div');
+                    badge.className = 'calendar-block-badge';
+                    badge.textContent = `${block.roomName} 包場`;
+                    badge.title = block.reason;
+                    detailsContainer.appendChild(badge);
+                });
 
                 if (bookingsForDay.length > 0) {
                     bookingsForDay.slice(0, 2).forEach(booking => {
@@ -512,9 +571,13 @@
                 const separator = WEB_APP_URL.includes('?') ? '&' : '?';
                 const result = await fetchJsonWithRetry(`${WEB_APP_URL}${separator}month=${monthString}&_=${Date.now()}`);
                 if (result.status !== 'success') throw new Error(result.message);
+                applyBlockResponse(result);
                 return result.data;
             }
 
+            const blockResult = await fetchJsonWithRetry(`${WEB_APP_URL}?month=${monthString}&_=${Date.now()}`);
+            if (blockResult.status !== 'success') throw new Error(blockResult.message);
+            applyBlockResponse(blockResult);
             const errors = [];
             for (const endpoint of SHEET_READ_ENDPOINTS) {
                 try {
@@ -567,6 +630,9 @@
                         })
                 ]);
             } catch (error) {
+                blockServiceAvailable = false;
+                document.getElementById('block-submit').disabled = true;
+                document.getElementById('block-service-status').textContent = '連線失敗，無法確認最新包場紀錄，請重新載入。';
                 console.error("Data fetch error:", error);
                 await customAlert(`資料讀取失敗，請檢查網路連線或稍後再試。<br><small class="text-slate-400 mt-2 block">${getFetchErrorMessage(error)}</small>`, 'warning', '讀取錯誤');
                 currentMonthBookings = []; 
@@ -621,6 +687,10 @@
         }
 
         function showBookingModal(roomName, startTime) {
+            if (findRoomBlock(roomName, els.datePicker.value)) {
+                customAlert('此場地當日已包場，無法借用。', 'warning');
+                return;
+            }
             document.getElementById('modal-room-name').textContent = roomName;
             document.getElementById('modal-date').textContent = els.datePicker.value;
             document.getElementById('modal-start-time').textContent = startTime;
@@ -655,6 +725,10 @@
         }
 
         async function handleApiCall(action, payload, successMessage) {
+            if (action === 'book' && findRoomBlock(payload.roomName, payload.date)) {
+                await customAlert('此場地當日已包場，無法借用。', 'warning');
+                return false;
+            }
             loaderCtrl.show();
             try {
                 const response = await fetch(WEB_APP_URL, { 
@@ -663,19 +737,52 @@
                     body: JSON.stringify({ action, payload })
                 });
                 
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const result = await response.json();
                 if (result.status !== 'success') throw new Error(result.message || '伺服器回傳錯誤');
                 
                 hideAllModals();
                 await updateViewData();
                 await customAlert(successMessage, 'success', '操作成功');
+                return true;
             } catch (error) {
-                console.error(`${action} API Error:`, error);
+                console.error(`${action} API Error`);
                 await customAlert(`操作失敗，請稍後再試。<br><small class="text-slate-400 mt-2 block">${error.message}</small>`, 'warning', '錯誤');
+                return false;
             } finally {
                 loaderCtrl.hide();
             }
         }
+
+        document.getElementById('block-year-end').addEventListener('click', () => {
+            const start = document.getElementById('block-start').value;
+            if (start) document.getElementById('block-end').value = `${start.slice(0, 4)}-12-31`;
+        });
+        document.getElementById('block-form').addEventListener('submit', async event => {
+            event.preventDefault();
+            if (!blockServiceAvailable) return;
+            const keyInput = document.getElementById('block-admin-key');
+            const payload = {
+                roomName: document.getElementById('block-room').value,
+                startDate: document.getElementById('block-start').value,
+                endDate: document.getElementById('block-end').value,
+                reason: document.getElementById('block-reason').value.trim(),
+                adminKey: keyInput.value
+            };
+            keyInput.value = '';
+            if (payload.endDate < payload.startDate || !payload.reason || !payload.adminKey) {
+                await customAlert('請填寫包場原因、管理密碼，且結束日期不可早於開始日期。', 'warning');
+                return;
+            }
+            document.getElementById('block-submit').disabled = true;
+            try {
+                if (await handleApiCall('block', payload, '包場已建立，期間內停止開放借用。')) {
+                    document.getElementById('block-reason').value = '';
+                }
+            } finally {
+                document.getElementById('block-submit').disabled = !blockServiceAvailable;
+            }
+        });
 
         document.getElementById('confirm-booking-btn').addEventListener('click', () => {
             const name = document.getElementById('booker-name').value.trim();
@@ -793,6 +900,8 @@
         window.addEventListener('load', async () => {
             const today = new Date();
             els.datePicker.value = formatDate(today);
+            document.getElementById('block-start').value = formatDate(today);
+            document.getElementById('block-end').value = formatDate(today);
             calendarDate = new Date(today.getFullYear(), today.getMonth(), 1);
             
             await updateViewData();

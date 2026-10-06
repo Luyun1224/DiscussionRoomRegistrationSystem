@@ -243,3 +243,9 @@
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* 全天包場 */
+.room-blocked { background: repeating-linear-gradient(135deg, #fee2e2, #fee2e2 8px, #fecaca 8px, #fecaca 16px); color: #991b1b; cursor: not-allowed; font-weight: 700; }
+.calendar-block-badge { background: #fee2e2; color: #991b1b; border-radius: 4px; padding: 2px 4px; font-size: 11px; }
+.block-record { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding: 12px; background: #fff1f2; border-radius: 8px; }
+#block-submit:disabled { opacity: .5; cursor: not-allowed; }

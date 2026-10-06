@@ -49,10 +49,13 @@
                 </h1>
             </div>
             
+            <div class="navbar-actions">
+                <button id="open-long-booking" type="button" class="btn-primary long-booking-button" aria-haspopup="dialog" aria-controls="long-booking-modal">長時間借用</button>
             <!-- 系統時間小工具 -->
             <div class="flex-shrink-0 flex items-center gap-1 sm:gap-2 text-[10px] sm:text-sm font-semibold text-slate-600 bg-slate-100/80 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-slate-200/50">
                 <svg class="w-3 h-3 sm:w-4 sm:h-4 text-[#007AC1]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 <span id="system-clock" class="tracking-wider w-[50px] sm:w-[68px] text-center">00:00:00</span>
+            </div>
             </div>
         </div>
     </nav>
@@ -85,25 +88,6 @@
     <!-- 主要內容區 (使用負 Margin 向上重疊，營造層次感) -->
     <div class="max-w-[85rem] mx-auto px-4 md:px-8 pb-12 space-y-6 md:space-y-8 relative z-10 -mt-10">
         
-        <section class="premium-card p-6" aria-labelledby="block-heading">
-            <h2 id="block-heading" class="text-xl font-bold mb-3">場地包場設定</h2>
-            <p class="text-sm text-slate-600 mb-4">包場期間每日 08:00–18:00 停止開放借用，包含起日與迄日。已有預約的區間需先處理預約。</p>
-            <p id="block-service-status" role="status" class="text-sm text-amber-700 mb-4">正在確認包場服務…</p>
-            <form id="block-form" class="space-y-4">
-                <div class="grid sm:grid-cols-3 gap-3">
-                    <div><label for="block-room">場地</label><select id="block-room" class="input-field"><option>討論室</option><option>多功能室</option></select></div>
-                    <div><label for="block-start">開始日期</label><input id="block-start" type="date" class="input-field" required></div>
-                    <div><label for="block-end">結束日期</label><input id="block-end" type="date" class="input-field" required></div>
-                </div>
-                <button id="block-year-end" type="button" class="text-sm text-blue-700 underline">結束日期設為開始日期當年年底</button>
-                <div><label for="block-reason">包場原因</label><input id="block-reason" class="input-field" maxlength="200" required placeholder="例如：教學部專案使用"></div>
-                <div><label for="block-admin-key">管理密碼</label><input id="block-admin-key" type="password" class="input-field" autocomplete="off" placeholder="新增與解除包場時使用，不會儲存在瀏覽器"></div>
-                <button id="block-submit" type="submit" class="btn-primary px-6 py-2.5 rounded-lg" disabled>新增包場</button>
-            </form>
-            <h3 class="font-bold mt-6 mb-2">包場紀錄</h3>
-            <div id="block-list" class="space-y-3" aria-live="polite"></div>
-        </section>
-
         <!-- 日時間表區塊 (Premium Card) -->
         <div class="premium-card overflow-hidden">
             <div class="border-b border-slate-100 p-5 bg-white/50 backdrop-blur-md flex items-center justify-between">
@@ -153,6 +137,28 @@
             </div>
         </div>
     </div>
+
+    <div id="long-booking-modal" role="dialog" aria-modal="true" aria-labelledby="block-heading" class="long-booking-modal modal-backdrop modal-hidden pointer-events-none">
+        <section class="modal-content long-booking-content premium-card p-6">
+            <button id="close-long-booking" type="button" class="long-booking-close" aria-label="關閉長時間借用">×</button>
+            <h2 id="block-heading" class="text-xl font-bold mb-3">長時間借用</h2>
+            <p class="text-sm text-slate-600 mb-4">借用期間每日 08:00–18:00 停止開放借用，包含起日與迄日。已有預約的區間需先處理預約。</p>
+            <p id="block-service-status" role="status" class="text-sm text-amber-700 mb-4">正在確認借用服務…</p>
+            <form id="block-form" class="space-y-4">
+                <div class="grid sm:grid-cols-3 gap-3">
+                    <div><label for="block-room">場地</label><select id="block-room" class="input-field"><option>討論室</option><option>多功能室</option></select></div>
+                    <div><label for="block-start">開始日期</label><input id="block-start" type="date" class="input-field" required></div>
+                    <div><label for="block-end">結束日期</label><input id="block-end" type="date" class="input-field" required></div>
+                </div>
+                <button id="block-year-end" type="button" class="text-sm text-blue-700 underline">結束日期設為開始日期當年年底</button>
+                <div><label for="block-reason">借用用途</label><input id="block-reason" class="input-field" maxlength="200" required placeholder="例如：教學部專案使用"></div>
+                <button id="block-submit" type="submit" class="btn-primary px-6 py-2.5 rounded-lg" disabled>確認長時間借用</button>
+            </form>
+            <h3 class="font-bold mt-6 mb-2">長時間借用紀錄</h3>
+            <div id="block-list" class="space-y-3" aria-live="polite"></div>
+        </section>
+    </div>
+
 
     <!-- 模態框 (預約) -->
     <div id="booking-modal" class="fixed inset-0 z-50 flex justify-center items-center p-3 sm:p-4 modal-backdrop modal-hidden pointer-events-none bg-slate-900/40">

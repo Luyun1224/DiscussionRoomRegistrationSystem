@@ -15,7 +15,7 @@ function setup() {
   }
   sheets['預約紀錄'] = makeSheet([['預約ID', '場地名稱', '預約日期', '開始時間', '結束時間', '借用者', '聯絡方式', '預訂用途', '額外欄位']]);
   const context = vm.createContext({
-    PropertiesService: { getScriptProperties: () => ({ getProperty: n => ({ SPREADSHEET_ID: 'test', BLOCK_ADMIN_KEY: 'test-key' })[n] }) },
+    PropertiesService: { getScriptProperties: () => ({ getProperty: n => ({ SPREADSHEET_ID: 'test' })[n] }) },
     SpreadsheetApp: { openById: () => db, flush: () => {} },
     Utilities: { getUuid: () => String(++serial) },
     ContentService: { MimeType: { JSON: 'json' }, createTextOutput: text => ({ setMimeType: () => JSON.parse(text) }) },
@@ -24,7 +24,7 @@ function setup() {
   vm.runInContext(fs.readFileSync('backend/Code.gs', 'utf8'), context);
   return { sheets, post: (action, payload) => context.doPost({ postData: { contents: JSON.stringify({ action, payload }) } }), get: month => context.doGet({ parameter: { month } }), isLocked: () => locked };
 }
-const block = { roomName: '討論室', startDate: '2026-10-06', endDate: '2026-12-31', reason: '專案包場', adminKey: 'test-key' };
+const block = { roomName: '討論室', startDate: '2026-10-06', endDate: '2026-12-31', reason: '專案包場' };
 const booking = { roomName: '討論室', date: '2026-10-06', startTime: '08:00', endTime: '09:00', bookerName: '測試', contact: '123', purpose: '測試' };
 test('range blocks inclusive dates across months; other rooms and outside range remain available', () => {
   const s = setup();
@@ -36,16 +36,14 @@ test('range blocks inclusive dates across months; other rooms and outside range 
   assert.equal(s.get('2026-11').capabilities.roomBlocks, true);
   assert.equal(s.isLocked(), false);
 });
-test('admin required; reversed/impossible dates and overlap rejected; unblock restores booking', () => {
+test('no password required; reversed/impossible dates and overlap rejected; unblock restores booking', () => {
   const s = setup();
-  assert.equal(s.post('block', { ...block, adminKey: 'wrong' }).status, 'error');
   assert.equal(s.post('block', { ...block, startDate: '2027-01-01' }).status, 'error');
   assert.equal(s.post('block', { ...block, startDate: '2026-02-30' }).status, 'error');
   assert.equal(s.post('block', block).status, 'success');
   assert.equal(s.post('block', { ...block, startDate: '2026-12-31', endDate: '2027-01-01' }).status, 'error');
   const id = s.get('2026-10').blocks[0].id;
-  assert.equal(s.post('unblock', { blockId: id, adminKey: 'wrong' }).status, 'error');
-  assert.equal(s.post('unblock', { blockId: id, adminKey: 'test-key' }).status, 'success');
+  assert.equal(s.post('unblock', { blockId: id }).status, 'success');
   assert.equal(s.post('book', booking).status, 'success');
 });
 test('existing bookings prevent blocks without modifying records; edit/cancel preserve API', () => {

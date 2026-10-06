@@ -67,10 +67,6 @@ function validDate(value) {
 function validateRoom(roomName) {
   if (!ROOM_NAMES.includes(roomName)) throw new Error('場地不存在');
 }
-function requireAdmin(payload) {
-  const key = PropertiesService.getScriptProperties().getProperty('BLOCK_ADMIN_KEY');
-  if (!key || typeof payload.adminKey !== 'string' || payload.adminKey !== key) throw new Error('管理密碼不正確或尚未設定');
-}
 function validateRange(payload) {
   validateRoom(payload.roomName);
   if (!validDate(payload.startDate) || !validDate(payload.endDate) || payload.startDate > payload.endDate) throw new Error('包場日期區間不正確');
@@ -106,7 +102,6 @@ function doPost(e) {
     const request = JSON.parse(e.postData.contents);
     const payload = request.payload || {};
     if (!['book', 'edit', 'cancel', 'block', 'unblock'].includes(request.action)) throw new Error('不支援的操作');
-    if (['block', 'unblock'].includes(request.action)) requireAdmin(payload);
     // All conflict checks and writes share the same lock; concurrent reservations cannot bypass blocks.
     lock.waitLock(30000);
     acquired = true;

@@ -36,8 +36,8 @@
             roomBlocks = blockServiceAvailable ? result.blocks : [];
             document.getElementById('block-submit').disabled = !blockServiceAvailable;
             document.getElementById('block-service-status').textContent = blockServiceAvailable
-                ? '包場服務已連線。新增與解除需輸入管理密碼。'
-                : '目前後端尚未支援包場，請先部署包場後端。';
+                ? '選擇場地與起訖日期即可借用，不需密碼。'
+                : '目前無法送出長時間借用，請聯絡系統維護者更新服務。';
             renderBlockList();
         }
 
@@ -45,7 +45,7 @@
             const list = document.getElementById('block-list');
             list.replaceChildren();
             if (!roomBlocks.length) {
-                list.textContent = blockServiceAvailable ? '目前沒有包場紀錄。' : '包場紀錄尚不可用。';
+                list.textContent = blockServiceAvailable ? '目前沒有長時間借用紀錄。' : '長時間借用紀錄尚不可用。';
                 return;
             }
             roomBlocks.forEach(block => {
@@ -55,15 +55,11 @@
                 text.textContent = `${block.roomName}｜${block.startDate} 至 ${block.endDate}（含迄日）｜${block.reason}`;
                 const button = document.createElement('button');
                 button.type = 'button';
-                button.textContent = '解除包場';
+                button.textContent = '取消長時間借用';
                 button.className = 'text-red-700 underline';
                 button.addEventListener('click', async () => {
-                    const keyInput = document.getElementById('block-admin-key');
-                    const adminKey = keyInput.value;
-                    keyInput.value = '';
-                    if (!adminKey) return customAlert('請先輸入管理密碼。', 'warning');
                     if (await customConfirm('解除後，該區間將重新開放借用。是否繼續？')) {
-                        await handleApiCall('unblock', { blockId: block.id, adminKey }, '已解除包場。');
+                        await handleApiCall('unblock', { blockId: block.id }, '已取消長時間借用。');
                     }
                 });
                 row.append(text, button);
@@ -644,6 +640,7 @@
         }
 
         function hideAllModals() {
+            closeLongBooking();
             closeModal(els.modals.booking);
             closeModal(els.modals.edit);
             ['booker-name', 'booker-contact', 'booking-purpose', 'edit-booker-name', 'edit-booker-contact', 'edit-booking-purpose'].forEach(id => {
@@ -754,6 +751,32 @@
             }
         }
 
+        const longBookingModal = document.getElementById('long-booking-modal');
+        const longBookingButton = document.getElementById('open-long-booking');
+        function closeLongBooking() {
+            if (!longBookingModal.classList.contains('modal-visible')) return;
+            closeModal(longBookingModal);
+            longBookingButton.focus();
+        }
+        longBookingButton.addEventListener('click', () => {
+            openModal(longBookingModal);
+            document.getElementById('block-room').focus();
+        });
+        document.getElementById('close-long-booking').addEventListener('click', closeLongBooking);
+        longBookingModal.addEventListener('click', event => {
+            if (event.target === longBookingModal) closeLongBooking();
+        });
+        document.addEventListener('keydown', event => {
+            if (!longBookingModal.classList.contains('modal-visible') || els.modals.alert.classList.contains('modal-visible')) return;
+            if (event.key === 'Escape') closeLongBooking();
+            if (event.key === 'Tab') {
+                const items = Array.from(longBookingModal.querySelectorAll('button:not(:disabled), input, select'));
+                const first = items[0], last = items[items.length - 1];
+                if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+                else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+            }
+        });
+
         document.getElementById('block-year-end').addEventListener('click', () => {
             const start = document.getElementById('block-start').value;
             if (start) document.getElementById('block-end').value = `${start.slice(0, 4)}-12-31`;
@@ -761,22 +784,19 @@
         document.getElementById('block-form').addEventListener('submit', async event => {
             event.preventDefault();
             if (!blockServiceAvailable) return;
-            const keyInput = document.getElementById('block-admin-key');
             const payload = {
                 roomName: document.getElementById('block-room').value,
                 startDate: document.getElementById('block-start').value,
                 endDate: document.getElementById('block-end').value,
-                reason: document.getElementById('block-reason').value.trim(),
-                adminKey: keyInput.value
+                reason: document.getElementById('block-reason').value.trim()
             };
-            keyInput.value = '';
-            if (payload.endDate < payload.startDate || !payload.reason || !payload.adminKey) {
-                await customAlert('請填寫包場原因、管理密碼，且結束日期不可早於開始日期。', 'warning');
+            if (payload.endDate < payload.startDate || !payload.reason) {
+                await customAlert('請填寫借用用途，且結束日期不可早於開始日期。', 'warning');
                 return;
             }
             document.getElementById('block-submit').disabled = true;
             try {
-                if (await handleApiCall('block', payload, '包場已建立，期間內停止開放借用。')) {
+                if (await handleApiCall('block', payload, '長時間借用已建立，期間內不再開放其他預約。')) {
                     document.getElementById('block-reason').value = '';
                 }
             } finally {

@@ -10,6 +10,8 @@
     
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <!-- 主標題字體：粗圓黑體，接近大洋流海報字感 -->
+    <link href="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@900&display=swap" rel="stylesheet">
     
     <!-- Tippy.js for custom tooltips -->
     <script src="https://unpkg.com/@popperjs/core@2"></script>
@@ -74,10 +76,8 @@
         <div class="max-w-[85rem] mx-auto px-4 md:px-8 pt-8 sm:pt-10 pb-24 sm:pb-28 flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
             <div class="text-center md:text-left">
                 <p class="hero-kicker">FUTURE ROOM → BOOK NOW</p>
-                <h2 class="hero-title">
-                    <span class="hero-title-outline">空間</span><span class="hero-title-solid">預約</span>
-                </h2>
-                <p class="hero-sub">即時查看與預約，讓會議安排更輕鬆有效率。</p>
+                <h2 class="hero-title">今天有<span class="hero-title-circle">空</span>嗎？</h2>
+                <p class="hero-sub">找個空間，讓好點子有地方發生</p>
             </div>
 
             <!-- 控制列 -->
@@ -181,20 +181,18 @@
                 新增預約
             </h3>
             
-            <div class="poster-info p-4 rounded-xl mb-6 flex flex-wrap gap-4 justify-between text-center items-center shadow-inner">
-                <div class="flex-1 min-w-[80px]"><p class="text-xs text-slate-500 mb-1 font-medium">場地</p><p id="modal-room-name" class="font-bold text-lg text-[#111]"></p></div>
-                <div class="w-[2px] h-10 bg-[#111]/20 hidden sm:block"></div>
-                <div class="flex-1 min-w-[80px]"><p class="text-xs text-slate-500 mb-1 font-medium">日期</p><p id="modal-date" class="font-semibold text-slate-800"></p></div>
-                <div class="w-[2px] h-10 bg-[#111]/20 hidden sm:block"></div>
-                <div class="flex-1 min-w-[120px] flex items-center justify-center gap-2">
+            <div class="poster-info info-grid p-4 rounded-xl mb-6 text-center">
+                <div class="info-cell"><p class="info-label">場地</p><p id="modal-room-name" class="info-value"></p></div>
+                <div class="info-cell"><p class="info-label">日期</p><p id="modal-date" class="info-value"></p></div>
+                <div class="info-cell info-time">
                     <div>
-                        <p class="text-xs text-slate-500 mb-1 font-medium">從</p>
-                        <p id="modal-start-time" class="font-bold text-[#E8590C] bg-white px-2 py-1 rounded border border-[#111] shadow-sm"></p>
+                        <p class="info-label">從</p>
+                        <p id="modal-start-time" class="time-pill"></p>
                     </div>
-                    <span class="text-slate-400 mt-4">-</span>
+                    <span class="info-dash" aria-hidden="true">–</span>
                     <div>
-                        <p class="text-xs text-slate-500 mb-1 font-medium">到</p>
-                        <select id="end-time-select" class="font-bold text-[#E8590C] bg-white border border-[#111] rounded shadow-sm focus:ring-2 focus:ring-[#E8590C] px-2 py-1 cursor-pointer outline-none"></select>
+                        <p class="info-label">到</p>
+                        <select id="end-time-select" class="time-pill time-select"></select>
                     </div>
                 </div>
             </div>
@@ -236,20 +234,18 @@
                 檢視 / 編輯預約
             </h3>
             
-            <div class="poster-info p-4 rounded-xl mb-6 flex flex-wrap gap-4 justify-between text-center items-center shadow-inner">
-                <div class="flex-1 min-w-[80px]"><p class="text-xs text-slate-500 mb-1 font-medium">場地</p><p id="edit-modal-room-name" class="font-bold text-lg text-[#111]"></p></div>
-                <div class="w-[2px] h-10 bg-[#111]/20 hidden sm:block"></div>
-                <div class="flex-1 min-w-[80px]"><p class="text-xs text-slate-500 mb-1 font-medium">日期</p><p id="edit-modal-date" class="font-semibold text-slate-800"></p></div>
-                <div class="w-[2px] h-10 bg-[#111]/20 hidden sm:block"></div>
-                <div class="flex-1 min-w-[120px] flex items-center justify-center gap-2">
+            <div class="poster-info info-grid p-4 rounded-xl mb-6 text-center">
+                <div class="info-cell"><p class="info-label">場地</p><p id="edit-modal-room-name" class="info-value"></p></div>
+                <div class="info-cell"><p class="info-label">日期</p><p id="edit-modal-date" class="info-value"></p></div>
+                <div class="info-cell info-time">
                     <div>
-                        <p class="text-xs text-slate-500 mb-1 font-medium">從</p>
-                        <p id="edit-modal-start-time" class="font-bold text-[#E8590C] bg-white px-2 py-1 rounded border border-[#111] shadow-sm"></p>
+                        <p class="info-label">從</p>
+                        <p id="edit-modal-start-time" class="time-pill"></p>
                     </div>
-                    <span class="text-slate-400 mt-4">-</span>
+                    <span class="info-dash" aria-hidden="true">–</span>
                     <div>
-                        <p class="text-xs text-slate-500 mb-1 font-medium">到</p>
-                        <select id="edit-end-time-select" class="font-bold text-[#E8590C] bg-white border border-[#111] rounded shadow-sm focus:ring-2 focus:ring-[#F26B1D] px-2 py-1 cursor-pointer outline-none"></select>
+                        <p class="info-label">到</p>
+                        <select id="edit-end-time-select" class="time-pill time-select"></select>
                     </div>
                 </div>
             </div>

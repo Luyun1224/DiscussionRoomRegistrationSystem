@@ -19,10 +19,10 @@
         const READ_RETRY_DELAYS_MS = [0, 1200, 3000];
         const HOLIDAY_API_URL = 'https://cdn.jsdelivr.net/gh/ruyut/TaiwanCalendar/data/{year}.json';
         
-        // 房間設定 (使用 OKC 配色：深海軍藍 / 雷霆藍)
+        // 房間設定 (大洋流海報配色：墨黑 / 海報橘)
         const rooms = [
-            { id: 1, name: '討論室', colorClass: 'bg-[#002D62]', textClass: 'text-[#002D62]' }, 
-            { id: 2, name: '多功能室', colorClass: 'bg-[#007AC1]', textClass: 'text-[#007AC1]' }, 
+            { id: 1, name: '討論室', colorClass: 'room-ink', textClass: 'room-ink-text' },
+            { id: 2, name: '多功能室', colorClass: 'room-orange', textClass: 'room-orange-text' },
         ];
 
         // --- 狀態變數 ---
@@ -73,6 +73,10 @@
         let calendarDate = new Date(); 
         let holidays = {};
         let tippyInstances = [];
+        // 已讀過的月份資料：切換月份時先立即顯示，再於背景更新。
+        const monthCache = new Map();
+        let viewRequestId = 0;
+        let pendingWrites = 0;
 
         // --- DOM 元素 ---
         const els = {
@@ -178,20 +182,38 @@
                 iconEl.className = 'mx-auto w-16 h-16 mb-4 flex items-center justify-center rounded-full bg-amber-100';
 
                 btnsEl.innerHTML = `
-                    <button id="confirm-cancel" class="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-colors">取消</button>
+                    <button id="confirm-cancel" class="flex-1 px-4 py-2.5 btn-secondary font-bold rounded-lg">取消</button>
                     <button id="confirm-ok" class="flex-1 px-4 py-2.5 btn-danger rounded-lg font-bold">確定執行</button>
                 `;
                 openModal(els.modals.alert);
                 
                 document.getElementById('confirm-ok').onclick = () => {
                     closeModal(els.modals.alert);
-                    setTimeout(() => resolve(true), 300);
+                    resolve(true);
                 };
                 document.getElementById('confirm-cancel').onclick = () => {
                     closeModal(els.modals.alert);
-                    setTimeout(() => resolve(false), 300);
+                    resolve(false);
                 };
             });
+        };
+
+        // 不擋畫面的提示訊息；pending 類型會一直顯示直到呼叫 dismiss。
+        const showToast = (message, type = 'info', duration = 3200) => {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.setAttribute('role', type === 'warning' ? 'alert' : 'status');
+            const text = document.createElement('span');
+            text.textContent = message;
+            toast.append(text);
+            document.getElementById('toast-region').append(toast);
+            requestAnimationFrame(() => toast.classList.add('toast-visible'));
+            const dismiss = () => {
+                toast.classList.remove('toast-visible');
+                setTimeout(() => toast.remove(), 250);
+            };
+            if (type !== 'pending') setTimeout(dismiss, duration);
+            return { dismiss };
         };
 
         const renderSchedule = (bookings) => {
@@ -293,7 +315,7 @@
 
                 const roomConfig = rooms[roomIndex];
                 const bookingEl = document.createElement('div');
-                bookingEl.className = `${roomConfig.colorClass} booked-slot rounded-md cursor-pointer border border-white/20`;
+                bookingEl.className = `${roomConfig.colorClass} booked-slot rounded-md cursor-pointer${booking._pending ? ' is-pending' : ''}`;
                 
                 bookingEl.style.gridRow = `${roomIndex + 2}`;
                 bookingEl.style.gridColumn = `${startSlotIndex + 2} / span ${durationSlots}`;
@@ -313,11 +335,11 @@
                 tippy(bookingEl, {
                     content: `
                         <div class="text-left">
-                            <div class="font-bold border-b border-slate-200 pb-1 mb-1 text-[#007AC1]">${roomName}</div>
+                            <div class="font-bold border-b border-slate-200 pb-1 mb-1 text-[#E8590C]">${roomName}</div>
                             <div class="text-sm font-medium">時間：${startTime} - ${endTime}</div>
                             <div class="text-sm font-medium">借用人：${booker}</div>
                             <div class="text-sm mt-1 pt-1 border-t border-slate-100 text-slate-500">用途：${purpose}</div>
-                            <div class="text-xs text-slate-400 mt-2 text-center">(點擊可編輯或取消)</div>
+                            <div class="text-xs text-slate-400 mt-2 text-center">${booking._pending ? '(儲存中…)' : '(點擊可編輯或取消)'}</div>
                         </div>
                     `,
                     allowHTML: true,
@@ -424,7 +446,7 @@
                     }
                     
                     const indicator = document.createElement('div');
-                    indicator.className = 'w-2 h-2 rounded-full bg-[#EF3B24] absolute top-2 right-2 shadow-sm';
+                    indicator.className = 'w-2 h-2 rounded-full bg-[#E8590C] absolute top-2 right-2';
                     topRow.appendChild(indicator);
                 }
                 
@@ -440,7 +462,7 @@
                     const tooltipContent = bookingsForDay.map(b => `
                         <div class="mb-2 last:mb-0">
                             <span class="inline-block w-2 h-2 rounded-full ${rooms.find(r=>r.name===b['場地名稱'])?.colorClass||'bg-gray-500'} mr-1"></span>
-                            <strong class="text-blue-800">${b['開始時間']}-${b['結束時間']}</strong> 
+                            <strong class="text-[#E8590C]">${b['開始時間']}-${b['結束時間']}</strong> 
                             <span class="text-slate-600 font-bold">${b['場地名稱']}</span><br>
                             <span class="text-sm text-slate-500 pl-3">借用: ${b['借用者']}</span>
                         </div>
@@ -612,32 +634,51 @@
             }
         }
 
-        async function updateViewData() {
+        const monthKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+        function rerenderView() {
+            renderCalendar(calendarDate, currentMonthBookings);
+            renderScheduleFromMonthData(els.datePicker.value);
+        }
+
+        // silent：背景更新，不顯示全螢幕轉圈，失敗也只提示不打斷操作。
+        async function updateViewData({ silent = false } = {}) {
             const year = calendarDate.getFullYear();
-            const month = calendarDate.getMonth() + 1;
-            const monthString = `${year}-${String(month).padStart(2, '0')}`;
-            
-            loaderCtrl.show();
+            const monthString = monthKey(calendarDate);
+            const requestId = ++viewRequestId;
+            const cached = monthCache.get(monthString);
+            if (cached) {
+                currentMonthBookings = cached;
+                rerenderView();
+            }
+            const blocking = !silent && !cached;
+            if (blocking) loaderCtrl.show();
             try {
-                await Promise.all([
+                const [, bookings] = await Promise.all([
                     fetchHolidays(year),
                     fetchBookingsFromPublishedSheet(monthString)
-                        .then(bookings => {
-                            currentMonthBookings = bookings;
-                        })
                 ]);
+                // 使用者已切到別的月份，或還有寫入未完成時，不用舊資料覆蓋畫面。
+                if (requestId !== viewRequestId || pendingWrites > 0) return;
+                monthCache.set(monthString, bookings);
+                currentMonthBookings = bookings;
+                rerenderView();
             } catch (error) {
+                console.error("Data fetch error:", error);
+                if (requestId !== viewRequestId) return;
+                if (cached || silent) {
+                    showToast('無法取得最新資料，目前顯示的可能不是最新狀態。', 'warning', 5000);
+                    return;
+                }
                 blockServiceAvailable = false;
                 bookingServiceAvailable = false;
                 document.getElementById('block-submit').disabled = true;
                 document.getElementById('block-service-status').textContent = '連線失敗，無法確認最新包場紀錄，請重新載入。';
-                console.error("Data fetch error:", error);
+                currentMonthBookings = [];
+                rerenderView();
                 await customAlert(`資料讀取失敗，請檢查網路連線或稍後再試。<br><small class="text-slate-400 mt-2 block">${getFetchErrorMessage(error)}</small>`, 'warning', '讀取錯誤');
-                currentMonthBookings = []; 
             } finally {
-                renderCalendar(calendarDate, currentMonthBookings);
-                renderScheduleFromMonthData(els.datePicker.value);
-                loaderCtrl.hide();
+                if (blocking) loaderCtrl.hide();
             }
         }
 
@@ -722,6 +763,97 @@
             
             openModal(els.modals.edit);
         }
+
+        async function postAction(action, payload) {
+            const response = await fetch(WEB_APP_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action, payload })
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const result = await response.json();
+            if (result.status !== 'success') throw new Error(result.message || '伺服器回傳錯誤');
+            return result;
+        }
+
+        // 更新某月份的本機資料；若該月份正在顯示則立即重繪。
+        function mutateMonth(month, fn) {
+            const isCurrent = month === monthKey(calendarDate);
+            const base = isCurrent ? currentMonthBookings : monthCache.get(month);
+            if (!base) return;
+            const next = fn(base);
+            monthCache.set(month, next);
+            if (isCurrent) {
+                currentMonthBookings = next;
+                rerenderView();
+            }
+        }
+
+        // 新增／編輯／取消：先更新畫面，背景送出；失敗時還原並提示。
+        async function submitBookingChange(action, payload, successMessage) {
+            if (action === 'book' && findRoomBlock(payload.roomName, payload.date)) {
+                await customAlert('此場地當日已包場，無法借用。', 'warning');
+                return;
+            }
+            const original = action === 'book' ? null : currentMonthBookings.find(b => b['預約ID'] === payload.bookingId);
+            if (action !== 'book' && !original) return;
+            const month = (action === 'book' ? payload.date : original['預約日期']).slice(0, 7);
+            const tempId = `pending-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            const id = action === 'book' ? tempId : original['預約ID'];
+
+            if (action === 'book') {
+                mutateMonth(month, list => [...list, {
+                    '預約ID': tempId, '場地名稱': payload.roomName, '預約日期': payload.date,
+                    '開始時間': payload.startTime, '結束時間': payload.endTime, '借用者': payload.bookerName,
+                    '聯絡方式': payload.contact, '預訂用途': payload.purpose, _pending: true
+                }]);
+            } else if (action === 'edit') {
+                mutateMonth(month, list => list.map(b => b['預約ID'] === id ? {
+                    ...b, '結束時間': payload.endTime, '借用者': payload.bookerName,
+                    '聯絡方式': payload.contact, '預訂用途': payload.purpose, _pending: true
+                } : b));
+            } else {
+                mutateMonth(month, list => list.filter(b => b['預約ID'] !== id));
+            }
+            hideAllModals();
+
+            pendingWrites++;
+            const progress = showToast(action === 'cancel' ? '正在取消預約…' : '正在儲存預約…', 'pending');
+            try {
+                await postAction(action, payload);
+                // 新預約的正式 ID 要等背景更新取得，在此之前維持「儲存中」不可編輯。
+                if (action === 'edit') {
+                    mutateMonth(month, list => list.map(b => {
+                        if (b['預約ID'] !== id) return b;
+                        const { _pending, ...confirmed } = b;
+                        return confirmed;
+                    }));
+                }
+                progress.dismiss();
+                showToast(successMessage, 'success');
+            } catch (error) {
+                console.error(`${action} API Error`, error);
+                if (action === 'book') {
+                    mutateMonth(month, list => list.filter(b => b['預約ID'] !== tempId));
+                } else if (action === 'edit') {
+                    mutateMonth(month, list => list.map(b => b['預約ID'] === id ? original : b));
+                } else {
+                    mutateMonth(month, list => list.some(b => b['預約ID'] === id) ? list : [...list, original]);
+                }
+                progress.dismiss();
+                await customAlert(`操作失敗，畫面已還原，請稍後再試。<br><small class="text-slate-400 mt-2 block">${error.message}</small>`, 'warning', '錯誤');
+            } finally {
+                pendingWrites--;
+                if (pendingWrites === 0) updateViewData({ silent: true });
+            }
+        }
+
+        window.addEventListener('beforeunload', event => {
+            if (pendingWrites > 0) {
+                event.preventDefault();
+                event.returnValue = '';
+            }
+        });
 
         async function handleApiCall(action, payload, successMessage) {
             if (action === 'book' && findRoomBlock(payload.roomName, payload.date)) {
@@ -859,12 +991,14 @@
             document.getElementById('block-submit').disabled = true;
             try {
                 const count = await createLongBooking(payload);
+                monthCache.clear();
                 closeModal(longBookingModal);
                 longBookingButton.focus();
                 await updateViewData();
                 await customAlert(`已完成 ${count} 日的全天借用，借用者資料已儲存至每日預約。`, 'success', '操作成功');
             } catch (error) {
                 // Refresh even after an uncertain write; partial results must remain visible.
+                monthCache.clear();
                 await updateViewData();
                 await customAlert(error.message, 'warning', '長時間借用未完成');
             } finally {
@@ -892,7 +1026,7 @@
                 contact: contact, 
                 purpose: purpose 
             };
-            handleApiCall('book', payload, '已成功新增您的預約！');
+            submitBookingChange('book', payload, '已成功新增您的預約！');
         });
 
         document.getElementById('confirm-edit-btn').addEventListener('click', () => {
@@ -912,7 +1046,7 @@
                 contact: contact, 
                 purpose: purpose 
             };
-            handleApiCall('edit', payload, '預約資訊已成功更新。');
+            submitBookingChange('edit', payload, '預約資訊已成功更新。');
         });
 
         document.getElementById('trigger-cancel-btn').addEventListener('click', async () => {
@@ -924,7 +1058,7 @@
                 `確定要取消 <span class="font-bold text-[#002D62]">${booking['借用者']}</span> 於 <span class="font-bold text-[#EF3B24]">${booking['開始時間']}-${booking['結束時間']}</span> 的預約嗎？<br><span class="text-sm text-slate-500 mt-2 block">此操作無法復原。</span>`
             );
             
-            if (confirmed) handleApiCall('cancel', { bookingId: bookingId }, '該筆預約已取消。');
+            if (confirmed) submitBookingChange('cancel', { bookingId: bookingId }, '該筆預約已取消。');
         });
 
         document.querySelectorAll('.close-modal-btn').forEach(btn => btn.addEventListener('click', hideAllModals));
@@ -939,7 +1073,8 @@
             } else if (bookedSlot) {
                 const bookingId = bookedSlot.dataset.bookingId;
                 const booking = currentDailyBookings.find(b => b['預約ID'] === bookingId);
-                if (booking) showEditModal(booking);
+                if (booking?._pending) showToast('這筆預約還在儲存中，請稍候再編輯。');
+                else if (booking) showEditModal(booking);
             }
         });
 

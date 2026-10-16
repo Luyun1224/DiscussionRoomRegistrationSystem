@@ -9,7 +9,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
     
     <!-- Tippy.js for custom tooltips -->
     <script src="https://unpkg.com/@popperjs/core@2"></script>
@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="assets/app.css">
 
 </head>
-<body class="text-slate-800">
+<body class="text-slate-900">
 
     <!-- 動態背景裝飾 -->
     <div class="bg-shapes">
@@ -29,80 +29,89 @@
 
     <!-- 全域載入遮罩 -->
     <div id="loader" class="fixed inset-0 z-[100] bg-slate-900 bg-opacity-40 flex flex-col justify-center items-center pointer-events-none opacity-0 transition-opacity duration-300 backdrop-blur-sm">
-        <div class="loader-spinner mb-4 bg-white rounded-full p-1 shadow-lg"></div>
-        <p class="text-white font-medium text-lg drop-shadow-md tracking-wide">處理中，請稍候...</p>
+        <div class="loader-card">
+            <div class="loader-spinner"></div>
+            <p class="font-black text-lg tracking-wide">處理中，請稍候…</p>
+        </div>
     </div>
 
     <!-- 系統頂部導覽列 Navbar -->
-    <nav class="system-navbar fixed top-0 w-full z-40 h-auto min-h-[4rem] py-2 sm:py-0 sm:h-16 flex items-center justify-center border-b border-slate-200/60">
+    <nav class="system-navbar fixed top-0 w-full z-40 h-auto min-h-[4rem] py-2 sm:py-0 sm:h-16 flex items-center justify-center">
         <div class="w-full max-w-[85rem] px-3 sm:px-4 md:px-8 flex items-center justify-between h-full">
             <div class="flex items-center gap-2 sm:gap-3 md:gap-4">
                 <!-- 奇美教學部 Logo -->
                 <img src="https://raw.githubusercontent.com/Luyun1224/DiscussionRoomRegistrationSystem/main/%E6%95%99%E5%AD%B8%E9%83%A8-LOGO(%E9%BB%91%E8%89%B2).png" alt="奇美醫院教學部" class="h-6 sm:h-8 md:h-10 object-contain drop-shadow-sm flex-shrink-0">
                 
-                <div class="h-4 sm:h-5 w-px bg-slate-300 mx-0.5 sm:mx-1 flex-shrink-0"></div>
+                <div class="h-5 sm:h-6 w-[3px] bg-[#111] mx-0.5 sm:mx-1 flex-shrink-0 rounded-full"></div>
                 
                 <!-- 系統名稱 -->
-                <h1 class="text-[13px] sm:text-base md:text-lg font-bold text-slate-800 tracking-tight sm:tracking-wider leading-tight">
+                <h1 class="text-[13px] sm:text-base md:text-lg font-black text-[#111] tracking-tight sm:tracking-wider leading-tight">
                     奇美醫院教學部<br class="block sm:hidden">討論室預約系統
-                    <span class="text-[9px] sm:text-xs text-white bg-[#007AC1] px-1.5 py-0.5 rounded-full ml-1 align-middle font-normal shadow-sm relative -top-0.5 sm:top-0">線上版</span>
+                    <span class="online-badge">線上版</span>
                 </h1>
             </div>
             
             <div class="navbar-actions">
-                <button id="open-long-booking" type="button" class="btn-primary long-booking-button" aria-haspopup="dialog" aria-controls="long-booking-modal">長時間借用</button>
+                <button id="open-long-booking" type="button" class="btn-primary long-booking-button" aria-haspopup="dialog" aria-controls="long-booking-modal">🚢 長時間借用</button>
             <!-- 系統時間小工具 -->
-            <div class="flex-shrink-0 flex items-center gap-1 sm:gap-2 text-[10px] sm:text-sm font-semibold text-slate-600 bg-slate-100/80 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-slate-200/50">
-                <svg class="w-3 h-3 sm:w-4 sm:h-4 text-[#007AC1]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <div class="clock-chip flex-shrink-0 flex items-center gap-1 sm:gap-2 text-[10px] sm:text-sm px-2 sm:px-3 py-1 sm:py-1.5">
+                <svg class="w-3 h-3 sm:w-4 sm:h-4 text-[#E8590C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 <span id="system-clock" class="tracking-wider w-[50px] sm:w-[68px] text-center">00:00:00</span>
             </div>
             </div>
         </div>
     </nav>
 
-    <!-- 歡迎橫幅 Sub-Header (全寬設計，與 Navbar 無縫連接) -->
-    <div class="bg-[#002D62] relative overflow-hidden mt-14 sm:mt-16 pt-6 sm:pt-10 pb-16 sm:pb-20 z-0 shadow-inner">
-        <!-- 裝飾性幾何圖形 -->
-        <div class="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-[#007AC1] opacity-30 rounded-full blur-3xl pointer-events-none"></div>
-        <div class="absolute bottom-0 left-10 -mb-10 w-48 h-48 bg-[#EF3B24] opacity-20 rounded-full blur-3xl pointer-events-none"></div>
-        
-        <div class="max-w-[85rem] mx-auto px-4 md:px-8 flex flex-col md:flex-row items-center justify-between relative z-10">
+    <!-- 歡迎橫幅：大洋流海報風 -->
+    <header class="poster-hero mt-[82px] sm:mt-16">
+        <div class="marquee" aria-hidden="true">
+            <div class="marquee-track">
+                <span>CHIMEI TEACHING DEPT.</span><span>→</span><span>討論室預約</span><span>→</span><span>DISCUSSION ROOM BOOKING</span><span>→</span><span>即時查看・線上預約</span><span>→</span>
+                <span>CHIMEI TEACHING DEPT.</span><span>→</span><span>討論室預約</span><span>→</span><span>DISCUSSION ROOM BOOKING</span><span>→</span><span>即時查看・線上預約</span><span>→</span>
+            </div>
+        </div>
+
+        <div class="max-w-[85rem] mx-auto px-4 md:px-8 pt-8 sm:pt-10 pb-24 sm:pb-28 flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
             <div class="text-center md:text-left">
-                <h2 class="text-2xl md:text-3xl font-bold text-white mb-2 tracking-wide drop-shadow-md">歡迎使用空間預約服務</h2>
-                <p class="text-blue-100 text-base md:text-lg font-medium drop-shadow">即時查看與預約，讓會議安排更輕鬆有效率。</p>
+                <p class="hero-kicker">FUTURE ROOM → BOOK NOW</p>
+                <h2 class="hero-title">
+                    <span class="hero-title-outline">空間</span><span class="hero-title-solid">預約</span>
+                </h2>
+                <p class="hero-sub">即時查看與預約，讓會議安排更輕鬆有效率。</p>
             </div>
 
             <!-- 控制列 -->
-            <div class="mt-6 md:mt-0 flex flex-col sm:flex-row items-center bg-white/10 backdrop-blur-md p-3 md:p-4 rounded-xl border border-white/20 gap-3 shadow-inner">
-                <div class="flex items-center gap-3">
-                    <label for="date-picker" class="font-bold text-white drop-shadow-sm whitespace-nowrap">快速跳轉：</label>
-                    <input type="date" id="date-picker" class="border border-white/30 bg-white/90 rounded-lg p-2 focus:ring-2 focus:ring-[#007AC1] focus:border-[#007AC1] text-slate-800 cursor-pointer transition-colors outline-none shadow-sm font-medium">
-                </div>
-                <button id="btn-today" class="w-full sm:w-auto px-5 py-2 bg-white/20 hover:bg-white/30 text-white font-bold rounded-lg transition-all border border-white/30 shadow-sm hover:shadow">
-                    回到今日
-                </button>
+            <div class="hero-controls">
+                <label for="date-picker" class="font-black whitespace-nowrap">📅 快速跳轉</label>
+                <input type="date" id="date-picker" class="hero-date">
+                <button id="btn-today" class="btn-primary hero-today">⚓ 回到今日</button>
             </div>
         </div>
-    </div>
+
+        <!-- 海浪裝飾 -->
+        <svg class="hero-waves" viewBox="0 0 1440 120" preserveAspectRatio="none" aria-hidden="true">
+            <path d="M0 40 Q60 10 120 40 T240 40 T360 40 T480 40 T600 40 T720 40 T840 40 T960 40 T1080 40 T1200 40 T1320 40 T1440 40" />
+            <path d="M0 70 Q60 40 120 70 T240 70 T360 70 T480 70 T600 70 T720 70 T840 70 T960 70 T1080 70 T1200 70 T1320 70 T1440 70" />
+            <path class="hero-waves-fill" d="M0 100 Q60 70 120 100 T240 100 T360 100 T480 100 T600 100 T720 100 T840 100 T960 100 T1080 100 T1200 100 T1320 100 T1440 100 V120 H0 Z" />
+        </svg>
+    </header>
 
     <!-- 主要內容區 (使用負 Margin 向上重疊，營造層次感) -->
-    <div class="max-w-[85rem] mx-auto px-4 md:px-8 pb-12 space-y-6 md:space-y-8 relative z-10 -mt-10">
+    <div class="max-w-[85rem] mx-auto px-4 md:px-8 pb-12 space-y-8 md:space-y-10 relative z-10 -mt-6">
         
         <!-- 日時間表區塊 (Premium Card) -->
         <div class="premium-card overflow-hidden">
-            <div class="border-b border-slate-100 p-5 bg-white/50 backdrop-blur-md flex items-center justify-between">
-                <h2 class="text-xl font-bold text-slate-800 flex items-center">
-                    <div class="p-1.5 bg-blue-50 rounded-lg mr-3 border border-blue-100">
-                        <svg class="w-6 h-6 text-[#007AC1]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                    </div>
-                    當日預約狀況 <span id="schedule-date-display" class="ml-3 text-sm font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-md"></span>
+            <div class="card-header p-5 flex items-center justify-between">
+                <h2 class="section-title">
+                    <span class="section-icon" aria-hidden="true">⚓</span>
+                    當日預約狀況 <span id="schedule-date-display" class="date-chip ml-3"></span>
                 </h2>
-                <div class="hidden sm:flex gap-4 text-sm font-medium text-slate-500">
-                    <div class="flex items-center"><span class="w-3 h-3 rounded-full bg-[#002D62] mr-2"></span>討論室</div>
-                    <div class="flex items-center"><span class="w-3 h-3 rounded-full bg-[#007AC1] mr-2"></span>多功能室</div>
+                <div class="hidden sm:flex gap-4 text-sm font-bold text-[#111]">
+                    <div class="flex items-center"><span class="legend-dot room-ink mr-2"></span>討論室</div>
+                    <div class="flex items-center"><span class="legend-dot room-orange mr-2"></span>多功能室</div>
                 </div>
             </div>
-            <div class="overflow-x-auto custom-scrollbar bg-white/30">
+            <div class="overflow-x-auto custom-scrollbar">
                 <div id="schedule-container" class="min-w-[1000px] p-6 relative">
                     <!-- 時間表將由 JS 動態生成 -->
                 </div>
@@ -112,25 +121,23 @@
         <!-- 月曆區塊 (Premium Card) -->
         <div id="calendar-wrapper" class="premium-card p-6">
             <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-                <h2 class="text-xl font-bold text-slate-800 flex items-center">
-                    <div class="p-1.5 bg-blue-50 rounded-lg mr-3 border border-blue-100">
-                        <svg class="w-6 h-6 text-[#007AC1]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                    </div>
+                <h2 class="section-title">
+                    <span class="section-icon" aria-hidden="true">🗓️</span>
                     月曆總覽
                 </h2>
-                <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 p-1 rounded-xl shadow-sm">
-                    <button id="prev-month-btn" class="p-2 rounded-lg hover:bg-white hover:shadow-sm text-slate-600 transition-all" title="上個月">
+                <div class="month-switcher flex items-center gap-2 p-1">
+                    <button id="prev-month-btn" class="month-btn p-2" title="上個月">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
                     </button>
-                    <h2 id="calendar-month-year" class="text-lg font-bold text-slate-800 min-w-[130px] text-center tracking-wide"></h2>
-                    <button id="next-month-btn" class="p-2 rounded-lg hover:bg-white hover:shadow-sm text-slate-600 transition-all" title="下個月">
+                    <h2 id="calendar-month-year" class="text-lg font-black text-[#111] min-w-[130px] text-center tracking-wide"></h2>
+                    <button id="next-month-btn" class="month-btn p-2" title="下個月">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                     </button>
                 </div>
             </div>
             
-            <div class="grid grid-cols-7 text-center font-bold text-slate-500 mb-3 text-sm">
-                <div class="text-red-500">週日</div><div>週一</div><div>週二</div><div>週三</div><div>週四</div><div>週五</div><div class="text-red-500">週六</div>
+            <div class="weekday-row grid grid-cols-7 text-center font-black mb-3 text-sm">
+                <div class="text-[#E8590C]">週日</div><div>週一</div><div>週二</div><div>週三</div><div>週四</div><div>週五</div><div class="text-[#E8590C]">週六</div>
             </div>
             <div id="calendar-grid" class="calendar-grid">
                 <!-- 日曆網格將由 JS 動態生成 -->
@@ -141,16 +148,16 @@
     <div id="long-booking-modal" role="dialog" aria-modal="true" aria-labelledby="block-heading" class="long-booking-modal modal-backdrop modal-hidden pointer-events-none">
         <section class="modal-content long-booking-content premium-card p-6">
             <button id="close-long-booking" type="button" class="long-booking-close" aria-label="關閉長時間借用">×</button>
-            <h2 id="block-heading" class="text-xl font-bold mb-3">長時間借用</h2>
+            <h2 id="block-heading" class="text-xl font-black mb-3">🚢 長時間借用</h2>
             <p class="text-sm text-slate-600 mb-4">借用期間每日 08:00–18:00 停止開放借用，包含起日與迄日。已有預約的區間需先處理預約。</p>
-            <p id="block-service-status" role="status" class="text-sm text-amber-700 mb-4">正在確認借用服務…</p>
+            <p id="block-service-status" role="status" class="text-sm text-[#111] mb-4">正在確認借用服務…</p>
             <form id="block-form" class="space-y-4">
                 <div class="grid sm:grid-cols-3 gap-3">
                     <div><label for="block-room">場地</label><select id="block-room" class="input-field"><option>討論室</option><option>多功能室</option></select></div>
                     <div><label for="block-start">開始日期</label><input id="block-start" type="date" class="input-field" required></div>
                     <div><label for="block-end">結束日期</label><input id="block-end" type="date" class="input-field" required></div>
                 </div>
-                <button id="block-year-end" type="button" class="text-sm text-blue-700 underline">結束日期設為開始日期當年年底</button>
+                <button id="block-year-end" type="button" class="text-sm font-bold text-[#E8590C] underline">結束日期設為開始日期當年年底</button>
                 <div><label for="long-booker-name">借用者姓名 <span class="text-red-500">*</span></label><input id="long-booker-name" class="input-field" required placeholder="請輸入單位與姓名"></div>
                 <div><label for="long-booker-contact">聯絡方式 <span class="text-red-500">*</span></label><input id="long-booker-contact" class="input-field" required placeholder="請輸入分機或手機號碼"></div>
                 <div><label for="block-reason">借用用途</label><input id="block-reason" class="input-field" maxlength="200" required placeholder="例如：教學部專案使用"></div>
@@ -164,30 +171,30 @@
 
     <!-- 模態框 (預約) -->
     <div id="booking-modal" class="fixed inset-0 z-50 flex justify-center items-center p-3 sm:p-4 modal-backdrop modal-hidden pointer-events-none bg-slate-900/40">
-        <div class="modal-content bg-white rounded-2xl shadow-2xl p-5 sm:p-6 md:p-8 w-full max-w-lg relative pointer-events-auto border-t-4 border-[#007AC1] max-h-[90vh] overflow-y-auto custom-scrollbar">
+        <div class="modal-content bg-white rounded-2xl shadow-2xl p-5 sm:p-6 md:p-8 w-full max-w-lg relative pointer-events-auto poster-modal max-h-[90vh] overflow-y-auto custom-scrollbar">
             <button class="close-modal-btn absolute top-3 right-3 sm:top-4 sm:right-4 text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-full p-2 transition-colors">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
             
             <h3 class="text-2xl font-bold mb-6 text-slate-800 flex items-center border-b pb-4">
-                <span class="w-2 h-6 bg-[#007AC1] rounded-full mr-3"></span>
+                <span class="w-2 h-6 bg-[#F26B1D] rounded-full mr-3 border-2 border-[#111]"></span>
                 新增預約
             </h3>
             
-            <div class="bg-[#f0f7fb] border border-[#b3def6] p-4 rounded-xl mb-6 flex flex-wrap gap-4 justify-between text-center items-center shadow-inner">
-                <div class="flex-1 min-w-[80px]"><p class="text-xs text-slate-500 mb-1 font-medium">場地</p><p id="modal-room-name" class="font-bold text-lg text-[#002D62]"></p></div>
-                <div class="w-px h-10 bg-[#b3def6] hidden sm:block"></div>
+            <div class="poster-info p-4 rounded-xl mb-6 flex flex-wrap gap-4 justify-between text-center items-center shadow-inner">
+                <div class="flex-1 min-w-[80px]"><p class="text-xs text-slate-500 mb-1 font-medium">場地</p><p id="modal-room-name" class="font-bold text-lg text-[#111]"></p></div>
+                <div class="w-[2px] h-10 bg-[#111]/20 hidden sm:block"></div>
                 <div class="flex-1 min-w-[80px]"><p class="text-xs text-slate-500 mb-1 font-medium">日期</p><p id="modal-date" class="font-semibold text-slate-800"></p></div>
-                <div class="w-px h-10 bg-[#b3def6] hidden sm:block"></div>
+                <div class="w-[2px] h-10 bg-[#111]/20 hidden sm:block"></div>
                 <div class="flex-1 min-w-[120px] flex items-center justify-center gap-2">
                     <div>
                         <p class="text-xs text-slate-500 mb-1 font-medium">從</p>
-                        <p id="modal-start-time" class="font-bold text-[#007AC1] bg-white px-2 py-1 rounded border border-blue-100 shadow-sm"></p>
+                        <p id="modal-start-time" class="font-bold text-[#E8590C] bg-white px-2 py-1 rounded border border-[#111] shadow-sm"></p>
                     </div>
                     <span class="text-slate-400 mt-4">-</span>
                     <div>
                         <p class="text-xs text-slate-500 mb-1 font-medium">到</p>
-                        <select id="end-time-select" class="font-bold text-[#007AC1] bg-white border border-blue-200 rounded shadow-sm focus:ring-2 focus:ring-[#007AC1] px-2 py-1 cursor-pointer outline-none"></select>
+                        <select id="end-time-select" class="font-bold text-[#E8590C] bg-white border border-[#111] rounded shadow-sm focus:ring-2 focus:ring-[#E8590C] px-2 py-1 cursor-pointer outline-none"></select>
                     </div>
                 </div>
             </div>
@@ -208,7 +215,7 @@
             </div>
             
             <div class="mt-8 flex justify-end gap-3">
-                <button class="close-modal-btn px-6 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-colors border border-slate-200">取消</button>
+                <button class="close-modal-btn px-6 py-2.5 btn-secondary font-bold rounded-lg">取消</button>
                 <button id="confirm-booking-btn" class="px-6 py-2.5 btn-primary rounded-lg font-bold flex items-center">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                     確認預約
@@ -219,30 +226,30 @@
 
     <!-- 模態框 (編輯) -->
     <div id="edit-modal" class="fixed inset-0 z-50 flex justify-center items-center p-3 sm:p-4 modal-backdrop modal-hidden pointer-events-none bg-slate-900/40">
-        <div class="modal-content bg-white rounded-2xl shadow-2xl p-5 sm:p-6 md:p-8 w-full max-w-lg relative pointer-events-auto border-t-4 border-amber-500 max-h-[90vh] overflow-y-auto custom-scrollbar">
+        <div class="modal-content bg-white rounded-2xl shadow-2xl p-5 sm:p-6 md:p-8 w-full max-w-lg relative pointer-events-auto poster-modal max-h-[90vh] overflow-y-auto custom-scrollbar">
             <button class="close-modal-btn absolute top-3 right-3 sm:top-4 sm:right-4 text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-full p-2 transition-colors">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
             
             <h3 class="text-2xl font-bold mb-6 text-slate-800 flex items-center border-b pb-4">
-                <span class="w-2 h-6 bg-amber-500 rounded-full mr-3"></span>
+                <span class="w-2 h-6 bg-[#111] rounded-full mr-3"></span>
                 檢視 / 編輯預約
             </h3>
             
-            <div class="bg-amber-50 border border-amber-200 p-4 rounded-xl mb-6 flex flex-wrap gap-4 justify-between text-center items-center shadow-inner">
-                <div class="flex-1 min-w-[80px]"><p class="text-xs text-slate-500 mb-1 font-medium">場地</p><p id="edit-modal-room-name" class="font-bold text-lg text-amber-700"></p></div>
-                <div class="w-px h-10 bg-amber-200 hidden sm:block"></div>
+            <div class="poster-info p-4 rounded-xl mb-6 flex flex-wrap gap-4 justify-between text-center items-center shadow-inner">
+                <div class="flex-1 min-w-[80px]"><p class="text-xs text-slate-500 mb-1 font-medium">場地</p><p id="edit-modal-room-name" class="font-bold text-lg text-[#111]"></p></div>
+                <div class="w-[2px] h-10 bg-[#111]/20 hidden sm:block"></div>
                 <div class="flex-1 min-w-[80px]"><p class="text-xs text-slate-500 mb-1 font-medium">日期</p><p id="edit-modal-date" class="font-semibold text-slate-800"></p></div>
-                <div class="w-px h-10 bg-amber-200 hidden sm:block"></div>
+                <div class="w-[2px] h-10 bg-[#111]/20 hidden sm:block"></div>
                 <div class="flex-1 min-w-[120px] flex items-center justify-center gap-2">
                     <div>
                         <p class="text-xs text-slate-500 mb-1 font-medium">從</p>
-                        <p id="edit-modal-start-time" class="font-bold text-amber-600 bg-white px-2 py-1 rounded border border-amber-100 shadow-sm"></p>
+                        <p id="edit-modal-start-time" class="font-bold text-[#E8590C] bg-white px-2 py-1 rounded border border-[#111] shadow-sm"></p>
                     </div>
                     <span class="text-slate-400 mt-4">-</span>
                     <div>
                         <p class="text-xs text-slate-500 mb-1 font-medium">到</p>
-                        <select id="edit-end-time-select" class="font-bold text-amber-600 bg-white border border-amber-200 rounded shadow-sm focus:ring-2 focus:ring-amber-500 px-2 py-1 cursor-pointer outline-none"></select>
+                        <select id="edit-end-time-select" class="font-bold text-[#E8590C] bg-white border border-[#111] rounded shadow-sm focus:ring-2 focus:ring-[#F26B1D] px-2 py-1 cursor-pointer outline-none"></select>
                     </div>
                 </div>
             </div>
@@ -268,7 +275,7 @@
                     取消此預約
                  </button>
                  <div class="w-full sm:w-auto flex gap-3">
-                    <button class="close-modal-btn flex-1 px-6 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-colors border border-slate-200">關閉</button>
+                    <button class="close-modal-btn flex-1 px-6 py-2.5 btn-secondary font-bold rounded-lg">關閉</button>
                     <button id="confirm-edit-btn" class="flex-1 px-6 py-2.5 btn-primary rounded-lg font-bold flex items-center justify-center">
                         儲存變更
                     </button>
@@ -290,6 +297,9 @@
             </div>
         </div>
     </div>
+
+    <!-- 背景操作提示 -->
+    <div id="toast-region" class="toast-region" aria-live="polite"></div>
 
     <script type="module" src="assets/app.js"></script>
 

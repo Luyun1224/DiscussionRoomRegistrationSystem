@@ -87,38 +87,24 @@
             border-radius: 6px;
             margin-bottom: 12px;
         }
+        /* 主標：極粗黑體 + 斜體 + 緊字距，仿「激燃體 斜體」的硬派標題字 */
         .hero-title {
-            font-family: 'Chiron GoRound TC', 'Noto Sans TC', sans-serif;
+            font-family: 'Noto Sans TC', sans-serif;
             font-weight: 900;
-            font-size: clamp(2.8rem, 8.5vw, 5.5rem);
-            line-height: 1.1;
-            letter-spacing: .02em;
+            font-size: clamp(3.2rem, 10vw, 6.5rem);
+            line-height: 1.05;
             margin: 0;
-            color: var(--ink);
-            /* 黑字 + 米白描邊 + 黑色位移陰影，仿洋流海報字 */
-            -webkit-text-stroke: 6px var(--cream);
-            paint-order: stroke fill;
+        }
+        .hero-title-text {
+            display: inline-block;
+            color: #fff;
+            letter-spacing: -0.06em;
+            transform: skewX(-12deg) scaleY(1.08);
+            transform-origin: left bottom;
             text-shadow: 6px 6px 0 var(--ink);
         }
-        .hero-title-circle {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 1.25em;
-            height: 1.25em;
-            margin: 0 .06em;
-            color: var(--cream);
-            -webkit-text-stroke: 0;
-            text-shadow: none;
-            background: var(--ink);
-            border: .07em solid var(--cream);
-            border-radius: 50%;
-            box-shadow: .07em .07em 0 var(--ink);
-            transform: rotate(-6deg);
-            vertical-align: middle;
-        }
         .hero-sub {
-            margin-top: 16px;
+            margin-top: 24px;
             font-weight: 900;
             font-size: clamp(1.05rem, 2.4vw, 1.35rem);
             letter-spacing: .04em;
@@ -528,5 +514,5 @@
 @media (max-width: 640px) {
     .navbar-actions { gap: 4px; flex-direction: column; }
     .long-booking-button { font-size: 12px; padding: 5px 8px; }
-    .hero-title { -webkit-text-stroke-width: 4px; text-shadow: 4px 4px 0 var(--ink); }
+    .hero-title-text { text-shadow: 4px 4px 0 var(--ink); transform-origin: center bottom; }
 }

@@ -128,7 +128,7 @@ function doPost(e) {
       if (request.action === 'cancel') {
         sheet.deleteRow(original._row);
       } else {
-        const booking = request.action === 'edit' ? Object.assign({}, payload, { roomName: original['場地名稱'], date: original['預約日期'], startTime: original['開始時間'] }) : payload;
+        const booking = request.action === 'edit' ? Object.assign({}, payload, { roomName: original['場地名稱'], date: original['預約日期'], startTime: payload.startTime === undefined ? original['開始時間'] : payload.startTime }) : payload;
         validateBooking(booking, bookings, blocks, original && original['預約ID']);
         const record = { '預約ID': original ? original['預約ID'] : Utilities.getUuid(), '場地名稱': booking.roomName, '預約日期': booking.date, '開始時間': booking.startTime, '結束時間': booking.endTime, '借用者': booking.bookerName.trim(), '聯絡方式': booking.contact.trim(), '預訂用途': booking.purpose.trim() };
         if (original) {

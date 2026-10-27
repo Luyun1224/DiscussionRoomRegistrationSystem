@@ -61,3 +61,16 @@ test('existing bookings prevent blocks without modifying records; edit/cancel pr
   assert.equal(s.post('cancel', { bookingId: id }).status, 'success');
   assert.equal(s.get('2026-10').data.length, 0);
 });
+
+test('edit persists start time and rejects reversed or overlapping ranges', () => {
+  const s = setup();
+  s.post('book', booking);
+  const id = s.get('2026-10').data[0]['預約ID'];
+  const edit = { bookingId: id, startTime: '09:30', endTime: '10:30', bookerName: '更新', contact: '123', purpose: '更新' };
+  assert.equal(s.post('edit', edit).status, 'success');
+  assert.equal(s.get('2026-10').data[0]['開始時間'], '09:30');
+  assert.equal(s.post('edit', { ...edit, startTime: '11:00' }).status, 'error');
+  assert.equal(s.post('book', { ...booking, startTime: '08:00', endTime: '09:00' }).status, 'success');
+  assert.equal(s.post('edit', { ...edit, startTime: '08:30' }).status, 'error');
+  assert.equal(s.get('2026-10').data[0]['開始時間'], '09:30');
+});

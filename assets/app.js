@@ -749,7 +749,6 @@
             els.modals.edit.dataset.bookingId = booking['預約ID'];
             document.getElementById('edit-modal-room-name').textContent = booking['場地名稱'];
             document.getElementById('edit-modal-date').textContent = booking['預約日期'];
-            document.getElementById('edit-modal-start-time').textContent = booking['開始時間'];
             
             document.getElementById('edit-booker-name').value = booking['借用者'];
             document.getElementById('edit-booker-contact').value = booking['聯絡方式'];
@@ -757,9 +756,20 @@
             
             const endTimeSelect = document.getElementById('edit-end-time-select');
             const roomBookingsToday = currentDailyBookings.filter(b => b['場地名稱'] === booking['場地名稱'] && b['預約ID'] !== booking['預約ID']);
-            const startIndex = timeSlots.indexOf(booking['開始時間']);
-            
-            populateEndTimeSelect(endTimeSelect, startIndex, roomBookingsToday, booking['結束時間']);
+            const startTimeSelect = document.getElementById('edit-start-time-select');
+            startTimeSelect.replaceChildren();
+            timeSlots.slice(0, -1).forEach(time => {
+                const occupied = roomBookingsToday.some(b => b['開始時間'] <= time && time < b['結束時間']);
+                if (!occupied) startTimeSelect.add(new Option(time, time));
+            });
+            startTimeSelect.value = booking['開始時間'];
+            const updateEndTimes = () => populateEndTimeSelect(
+                endTimeSelect, timeSlots.indexOf(startTimeSelect.value), roomBookingsToday,
+                endTimeSelect.value || booking['結束時間']
+            );
+            startTimeSelect.onchange = updateEndTimes;
+            endTimeSelect.replaceChildren();
+            updateEndTimes();
             
             openModal(els.modals.edit);
         }
@@ -809,7 +819,7 @@
                 }]);
             } else if (action === 'edit') {
                 mutateMonth(month, list => list.map(b => b['預約ID'] === id ? {
-                    ...b, '結束時間': payload.endTime, '借用者': payload.bookerName,
+                    ...b, '開始時間': payload.startTime, '結束時間': payload.endTime, '借用者': payload.bookerName,
                     '聯絡方式': payload.contact, '預訂用途': payload.purpose, _pending: true
                 } : b));
             } else {
@@ -1041,11 +1051,16 @@
             
             const payload = { 
                 bookingId: els.modals.edit.dataset.bookingId, 
+                startTime: document.getElementById('edit-start-time-select').value,
                 endTime: document.getElementById('edit-end-time-select').value, 
                 bookerName: name, 
                 contact: contact, 
                 purpose: purpose 
             };
+            if (!payload.startTime || !payload.endTime || payload.startTime >= payload.endTime) {
+                customAlert('請選擇有效的開始與結束時間。', 'warning');
+                return;
+            }
             submitBookingChange('edit', payload, '預約資訊已成功更新。');
         });
 

@@ -21,7 +21,7 @@ function setup() {
     ContentService: { MimeType: { JSON: 'json' }, createTextOutput: text => ({ setMimeType: () => JSON.parse(text) }) },
     LockService: { getScriptLock: () => ({ waitLock: () => { assert.equal(locked, false); locked = true; }, releaseLock: () => { locked = false; } }) }
   });
-  vm.runInContext(fs.readFileSync('backend/Code.gs', 'utf8'), context);
+  vm.runInContext(fs.readFileSync('gas/Code.gs', 'utf8'), context);
   return { sheets, post: (action, payload) => context.doPost({ postData: { contents: JSON.stringify({ action, payload }) } }), get: month => context.doGet({ parameter: { month } }), isLocked: () => locked };
 }
 const block = { roomName: '討論室', startDate: '2026-10-06', endDate: '2026-12-31', reason: '專案包場' };

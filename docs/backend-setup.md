@@ -21,7 +21,7 @@
 3. 將 `Code.gs` 加入採用 V8 runtime 的 Apps Script 專案。在「專案設定 → 指令碼屬性」設定 `SPREADSHEET_ID`（試算表 ID）、`BOOKING_SHEET_NAME`（預設「預約紀錄」）。長時間借用的新增與取消不需要管理密碼。
 4. 首次包場時建立「包場設定」工作表（id、roomName、startDate、endDate、reason），請勿手動改動欄位名稱；現行預約工作表不會自動建立或改標題。
 5. 測試部署為網頁應用程式，以擁有試算表權限的帳號執行；存取設定需與原本公開網站相容。依 Google 介面完成所需授權。
-6. 將測試部署 `/exec` 網址填入 `assets/app.js` 的 `WEB_APP_URL`。正式上線時也必須更新現有部署版本或更換網址。GET 可額外回傳 `capabilities.roomBlocks: true` 與 `blocks` 以顯示既有包場；長時間借用送出只需要原本支援的讀取與 `book` API。
+6. 將測試部署 `/exec` 網址填入 `src/app.js` 的 `WEB_APP_URL`。正式上線時也必須更新現有部署版本或更換網址。GET 可額外回傳 `capabilities.roomBlocks: true` 與 `blocks` 以顯示既有包場；長時間借用送出只需要原本支援的讀取與 `book` API。
 7. 若使用發布 CSV/GViz 讀取一般預約，前端仍會向 Apps Script 讀取包場資料；包場表無需發布到網路。
 
 測試新增「討論室」包場（例如 2026-10-06 至 2026-12-31）、確認開始日與結束日皆封鎖／其他場地仍可借、跨月月曆標示、無密碼新增與取消、直接 API book/edit 被拒絕、既有預約衝突、跨使用者重新載入與解除後恢復借用。不要對正式資料提交測試預約。

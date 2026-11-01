@@ -61,7 +61,7 @@ python3 -m http.server 8000
 ## 測試
 
 ```bash
-node --test tests/
+node --test tests/backend.test.cjs
 ```
 
 `tests/*.py` 是使用 Playwright 的前端 UI 測試（需先啟動上面的本機伺服器）。

@@ -13,4 +13,4 @@ jobs:
         with:
           node-version: 20
       - name: GAS 後端單元測試
-        run: node --test tests/
+        run: node --test tests/backend.test.cjs
